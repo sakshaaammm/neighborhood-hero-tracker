@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -5,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/providers/AuthProvider";
 import { MapPin, AlertCircle, Award, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function Index() {
   const { login } = useAuth();
@@ -15,12 +17,34 @@ export default function Index() {
 
   const handleLogin = async (type: "resident" | "authority") => {
     setIsLoading(true);
+    
+    // Demo credentials check
+    const isValidCredentials = type === "resident" 
+      ? credentials.username === "demo" && credentials.password === "demo123"
+      : credentials.username === "admin" && credentials.password === "admin123";
+
+    if (!isValidCredentials) {
+      toast.error("Invalid credentials. Please use demo accounts.");
+      setIsLoading(false);
+      return;
+    }
+
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     login(type);
     setIsLoading(false);
     // Navigate to appropriate dashboard
     navigate(type === "resident" ? "/user-dashboard" : "/admin-dashboard");
+    toast.success(`Welcome back, ${credentials.username}!`);
+  };
+
+  const handleDemoLogin = (type: "resident" | "authority") => {
+    const demoCredentials = type === "resident" 
+      ? { username: "demo", password: "demo123" }
+      : { username: "admin", password: "admin123" };
+    
+    setCredentials(demoCredentials);
+    setLoginType(type);
   };
 
   return (
@@ -34,6 +58,13 @@ export default function Index() {
         <p className="text-xl text-white/80 max-w-[600px] neo-blur p-4 rounded-lg">
           Join our community-driven platform to report and resolve neighborhood issues
         </p>
+        <div className="text-sm text-white/60 neo-blur p-2 rounded-lg">
+          Demo Accounts: 
+          <br />
+          Resident: demo / demo123
+          <br />
+          Authority: admin / admin123
+        </div>
       </div>
 
       <div className="relative z-10 grid md:grid-cols-3 gap-6 w-full max-w-5xl">
@@ -90,7 +121,7 @@ export default function Index() {
                 onClick={() => handleLogin(loginType)}
               >
                 <Lock className="mr-2 h-4 w-4" />
-                Login
+                {isLoading ? "Logging in..." : "Login"}
               </Button>
               <Button
                 size="lg"
@@ -109,7 +140,7 @@ export default function Index() {
             size="lg"
             className="button-shine glass hover:bg-white/20 hover:scale-105 transition-all duration-300"
             disabled={isLoading}
-            onClick={() => setLoginType("resident")}
+            onClick={() => handleDemoLogin("resident")}
           >
             Login as Resident
           </Button>
@@ -118,7 +149,7 @@ export default function Index() {
             variant="outline"
             className="button-shine glass hover:bg-white/20 hover:scale-105 transition-all duration-300"
             disabled={isLoading}
-            onClick={() => setLoginType("authority")}
+            onClick={() => handleDemoLogin("authority")}
           >
             Authority Login
           </Button>
