@@ -1,13 +1,14 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/providers/AuthProvider";
 import { MapPin, AlertCircle, Award, Lock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Index() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [loginType, setLoginType] = useState<"resident" | "authority" | null>(null);
   const [credentials, setCredentials] = useState({ username: "", password: "" });
@@ -18,6 +19,8 @@ export default function Index() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     login(type);
     setIsLoading(false);
+    // Navigate to appropriate dashboard
+    navigate(type === "resident" ? "/user-dashboard" : "/admin-dashboard");
   };
 
   return (
