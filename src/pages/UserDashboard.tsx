@@ -10,11 +10,39 @@ import {
   FileText,
   Clock,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+
+// Mock global state (replace with proper state management)
+let globalIssues: any[] = [];
 
 export default function UserDashboard() {
   const [selectedTab, setSelectedTab] = useState<"report" | "vouchers" | "progress">("report");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    location: "",
+  });
+  const [showCompanies, setShowCompanies] = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
 
-  // Mock data - replace with actual data from your backend
+  // Sample companies for voucher redemption
+  const companies = [
+    "Metro Supermarket",
+    "City Hospital",
+    "Urban Transport",
+    "Green Energy Co.",
+    "Local Pharmacy",
+  ];
+
+  // Mock data
   const vouchers = [
     { id: 1, title: "10% Hospital Discount", points: 100, redeemed: false },
     { id: 2, title: "Shopping Gift Card $50", points: 200, redeemed: false },
@@ -26,6 +54,49 @@ export default function UserDashboard() {
     { id: 2, name: "Jane Smith", points: 450, issues: 12 },
     { id: 3, name: "Mike Johnson", points: 400, issues: 10 },
   ];
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!formData.title || !formData.description || !formData.location) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    const newIssue = {
+      id: Date.now(),
+      ...formData,
+      status: "pending",
+      reporter: "Demo User",
+      date: new Date().toISOString().split('T')[0],
+      image: imagePreview,
+    };
+
+    globalIssues.push(newIssue);
+    toast.success("Problem reported successfully!");
+    
+    // Reset form
+    setFormData({ title: "", description: "", location: "" });
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
+  const handleVoucherRedeem = (voucher: any) => {
+    setSelectedVoucher(voucher);
+    setShowCompanies(true);
+  };
+
+  const handleCompanySelect = (company: string) => {
+    toast.success(`Voucher redeemed at ${company}!`);
+    setShowCompanies(false);
+    setSelectedVoucher(null);
+  };
 
   return (
     <div className="min-h-screen p-6 space-y-8">
@@ -64,16 +135,60 @@ export default function UserDashboard() {
                 type="text"
                 placeholder="Problem Title"
                 className="w-full p-2 glass"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               />
               <textarea
                 placeholder="Problem Description"
                 className="w-full p-2 glass h-32"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
-              <Button className="glass button-shine">
-                <Upload className="mr-2" />
-                Upload Media
+              <input
+                type="text"
+                placeholder="Location (e.g., '123 Main St' or coordinates)"
+                className="w-full p-2 glass"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              />
+              <div className="space-y-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  id="image-upload"
+                  onChange={handleImageChange}
+                />
+                <label htmlFor="image-upload">
+                  <Button className="glass button-shine" asChild>
+                    <span>
+                      <Upload className="mr-2" />
+                      Upload Media
+                    </span>
+                  </Button>
+                </label>
+                {imagePreview && (
+                  <div className="relative w-full max-w-md">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="rounded-lg w-full h-48 object-cover"
+                    />
+                    <Button
+                      className="absolute top-2 right-2 glass"
+                      onClick={() => {
+                        setSelectedImage(null);
+                        setImagePreview(null);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <Button className="w-full glass button-shine" onClick={handleSubmit}>
+                Submit Report
               </Button>
-              <Button className="w-full glass button-shine">Submit Report</Button>
             </div>
           </Card>
         )}
@@ -88,6 +203,7 @@ export default function UserDashboard() {
                 <Button 
                   className="mt-4 w-full glass button-shine"
                   disabled={voucher.redeemed}
+                  onClick={() => handleVoucherRedeem(voucher)}
                 >
                   {voucher.redeemed ? "Redeemed" : "Redeem Now"}
                 </Button>
@@ -117,6 +233,25 @@ export default function UserDashboard() {
             </div>
           </Card>
         )}
+
+        <Dialog open={showCompanies} onOpenChange={setShowCompanies}>
+          <DialogContent className="glass">
+            <DialogHeader>
+              <DialogTitle>Select Redemption Location</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4">
+              {companies.map((company) => (
+                <Button
+                  key={company}
+                  className="glass button-shine"
+                  onClick={() => handleCompanySelect(company)}
+                >
+                  {company}
+                </Button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

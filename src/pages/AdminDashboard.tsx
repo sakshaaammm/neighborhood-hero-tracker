@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,11 +8,15 @@ import {
   AlertCircle,
   Award,
   User,
+  Image as ImageIcon,
 } from "lucide-react";
+import { toast } from "sonner";
+
+// Access global issues (replace with proper state management)
+declare const globalIssues: any[];
 
 export default function AdminDashboard() {
-  // Mock data - replace with actual data from your backend
-  const [issues, setIssues] = useState([
+  const [issues, setIssues] = useState<any[]>([
     {
       id: 1,
       title: "Pothole on Main Street",
@@ -20,6 +24,7 @@ export default function AdminDashboard() {
       status: "pending",
       reporter: "John Doe",
       date: "2024-02-20",
+      location: "123 Main St",
     },
     {
       id: 2,
@@ -28,13 +33,58 @@ export default function AdminDashboard() {
       status: "in_progress",
       reporter: "Jane Smith",
       date: "2024-02-19",
+      location: "456 Oak Ave",
+    },
+    {
+      id: 3,
+      title: "Illegal Dumping",
+      description: "Garbage being dumped near the park",
+      status: "pending",
+      reporter: "Mike Johnson",
+      date: "2024-02-18",
+      location: "789 Park Rd",
+    },
+    {
+      id: 4,
+      title: "Graffiti on Wall",
+      description: "Vandalism on public property",
+      status: "completed",
+      reporter: "Sarah Williams",
+      date: "2024-02-17",
+      location: "321 Wall St",
     },
   ]);
+
+  // Check for new issues periodically
+  useEffect(() => {
+    const checkNewIssues = () => {
+      if (typeof globalIssues !== 'undefined' && globalIssues.length > 0) {
+        setIssues(prev => {
+          const newIssues = globalIssues.filter(
+            issue => !prev.some(existingIssue => existingIssue.id === issue.id)
+          );
+          if (newIssues.length > 0) {
+            toast.info(`${newIssues.length} new issue(s) reported`);
+            return [...prev, ...newIssues];
+          }
+          return prev;
+        });
+      }
+    };
+
+    const interval = setInterval(checkNewIssues, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const updateStatus = (id: number, status: string) => {
     setIssues(issues.map(issue => 
       issue.id === id ? { ...issue, status } : issue
     ));
+    toast.success(`Issue status updated to ${status}`);
+  };
+
+  const awardPoints = (reporter: string) => {
+    toast.success(`100 points awarded to ${reporter}`);
   };
 
   const getStatusIcon = (status: string) => {
@@ -58,7 +108,7 @@ export default function AdminDashboard() {
         <div className="space-y-6">
           {issues.map((issue) => (
             <Card key={issue.id} className="p-6 glass hover:bg-white/10 transition-all">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-6">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     {getStatusIcon(issue.status)}
@@ -70,7 +120,19 @@ export default function AdminDashboard() {
                     <span>{issue.reporter}</span>
                     <span>•</span>
                     <span>{issue.date}</span>
+                    <span>•</span>
+                    <MapPin size={16} />
+                    <span>{issue.location}</span>
                   </div>
+                  {issue.image && (
+                    <div className="mt-4">
+                      <img
+                        src={issue.image}
+                        alt="Problem"
+                        className="rounded-lg max-h-48 object-cover"
+                      />
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex flex-col gap-2">
@@ -101,6 +163,7 @@ export default function AdminDashboard() {
                   <Button
                     size="sm"
                     className="glass button-shine"
+                    onClick={() => awardPoints(issue.reporter)}
                   >
                     <Award className="mr-2 h-4 w-4" />
                     Award Points
