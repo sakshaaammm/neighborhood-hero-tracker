@@ -9,6 +9,7 @@ import {
   Award,
   User,
   Image as ImageIcon,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 
