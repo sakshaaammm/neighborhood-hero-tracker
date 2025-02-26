@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,14 +13,29 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+// Initialize global issues if it doesn't exist
+if (typeof window !== 'undefined' && !window.hasOwnProperty('globalIssues')) {
+  (window as any).globalIssues = [];
+}
+
+declare global {
+  interface Window {
+    globalIssues: any[];
+  }
+}
+
 export default function AdminDashboard() {
   const [issues, setIssues] = useState<any[]>([]);
 
   // Check for new issues periodically
   useEffect(() => {
     const checkNewIssues = () => {
-      if (typeof window !== 'undefined' && window.globalIssues?.length > 0) {
-        setIssues(window.globalIssues);
+      if (typeof window !== 'undefined') {
+        // Initialize if undefined
+        if (!window.globalIssues) {
+          window.globalIssues = [];
+        }
+        setIssues([...window.globalIssues]); // Create new array reference
       }
     };
 
@@ -32,6 +48,10 @@ export default function AdminDashboard() {
   }, []);
 
   const updateStatus = (id: number, status: string) => {
+    if (!window.globalIssues) {
+      window.globalIssues = [];
+    }
+    
     const updatedIssues = issues.map(issue => 
       issue.id === id ? { ...issue, status } : issue
     );
