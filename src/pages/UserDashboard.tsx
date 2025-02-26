@@ -18,8 +18,42 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-// Mock global state (replace with proper state management)
-let globalIssues: any[] = [];
+// Initialize global issues if it doesn't exist
+if (typeof window !== 'undefined' && !window.hasOwnProperty('globalIssues')) {
+  (window as any).globalIssues = [];
+}
+
+declare global {
+  interface Window {
+    globalIssues: any[];
+  }
+}
+
+const sampleProblems = [
+  { id: 1, title: "Pothole", category: "Road Infrastructure" },
+  { id: 2, title: "Street Light", category: "Public Lighting" },
+  { id: 3, title: "Garbage", category: "Sanitation" },
+  { id: 4, title: "Tree Fallen", category: "Environment" },
+  { id: 5, title: "Water Leakage", category: "Utilities" },
+  { id: 6, title: "Traffic Signal", category: "Traffic Management" },
+  { id: 7, title: "Graffiti", category: "Public Property" },
+  { id: 8, title: "Park Maintenance", category: "Public Spaces" },
+];
+
+const generateDescription = (title: string, category: string) => {
+  const descriptions = {
+    "Pothole": "A significant road surface depression causing potential vehicle damage and traffic hazards.",
+    "Street Light": "Non-functional street light creating visibility issues and safety concerns in the area.",
+    "Garbage": "Accumulated waste requiring immediate collection and disposal to maintain cleanliness.",
+    "Tree Fallen": "Fallen tree blocking pathway/road, requiring urgent removal for safety.",
+    "Water Leakage": "Water pipe leakage causing water wastage and potential road damage.",
+    "Traffic Signal": "Malfunctioning traffic signal creating traffic management issues.",
+    "Graffiti": "Unauthorized graffiti on public property requiring cleaning.",
+    "Park Maintenance": "Park facilities requiring maintenance and repair for public safety.",
+  };
+  return descriptions[title as keyof typeof descriptions] || 
+    `Issue related to ${category} requiring immediate attention.`;
+};
 
 export default function UserDashboard() {
   const [selectedTab, setSelectedTab] = useState<"report" | "vouchers" | "progress">("report");
@@ -33,7 +67,6 @@ export default function UserDashboard() {
   const [showCompanies, setShowCompanies] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
 
-  // Sample companies for voucher redemption
   const companies = [
     "Metro Supermarket",
     "City Hospital",
@@ -42,7 +75,6 @@ export default function UserDashboard() {
     "Local Pharmacy",
   ];
 
-  // Mock data
   const vouchers = [
     { id: 1, title: "10% Hospital Discount", points: 100, redeemed: false },
     { id: 2, title: "Shopping Gift Card $50", points: 200, redeemed: false },
@@ -55,11 +87,40 @@ export default function UserDashboard() {
     { id: 3, name: "Mike Johnson", points: 400, issues: 10 },
   ];
 
+  const handleSampleProblemSelect = (problem: typeof sampleProblems[0]) => {
+    setFormData({
+      title: problem.title,
+      description: generateDescription(problem.title, problem.category),
+      location: formData.location,
+    });
+    toast.success("Problem template loaded");
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedImage(file);
       setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const getCurrentLocation = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setFormData(prev => ({
+            ...prev,
+            location: `${latitude},${longitude}`
+          }));
+          toast.success("Current location detected");
+        },
+        (error) => {
+          toast.error("Error getting location: " + error.message);
+        }
+      );
+    } else {
+      toast.error("Geolocation is not supported by your browser");
     }
   };
 
@@ -78,7 +139,8 @@ export default function UserDashboard() {
       image: imagePreview,
     };
 
-    globalIssues.push(newIssue);
+    // Add to window.globalIssues
+    window.globalIssues = [...(window.globalIssues || []), newIssue];
     toast.success("Problem reported successfully!");
     
     // Reset form
@@ -130,6 +192,19 @@ export default function UserDashboard() {
         {selectedTab === "report" && (
           <Card className="p-6 glass animate-fadeIn">
             <h2 className="text-2xl font-semibold mb-4 text-glow">Report a Problem</h2>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
+              {sampleProblems.map((problem) => (
+                <Button
+                  key={problem.id}
+                  onClick={() => handleSampleProblemSelect(problem)}
+                  className="glass hover:bg-white/10"
+                >
+                  {problem.title}
+                </Button>
+              ))}
+            </div>
+
             <div className="space-y-4">
               <input
                 type="text"
@@ -144,13 +219,22 @@ export default function UserDashboard() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
-              <input
-                type="text"
-                placeholder="Location (e.g., '123 Main St' or coordinates)"
-                className="w-full p-2 glass"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Location (e.g., '123 Main St' or coordinates)"
+                  className="flex-1 p-2 glass"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                />
+                <Button 
+                  className="glass button-shine"
+                  onClick={getCurrentLocation}
+                >
+                  <MapPin className="mr-2" />
+                  Get Location
+                </Button>
+              </div>
               <div className="space-y-2">
                 <input
                   type="file"
