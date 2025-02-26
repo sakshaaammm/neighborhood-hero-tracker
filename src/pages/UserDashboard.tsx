@@ -18,8 +18,15 @@ import {
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
-// Mock global state (replace with proper state management)
-let globalIssues: any[] = [];
+// Initialize global issues array if it doesn't exist
+if (typeof window !== 'undefined' && !window.hasOwnProperty('globalIssues')) {
+  (window as any).globalIssues = [];
+}
+declare global {
+  interface Window {
+    globalIssues: any[];
+  }
+}
 
 export default function UserDashboard() {
   const navigate = useNavigate();
@@ -86,15 +93,14 @@ export default function UserDashboard() {
       image: imagePreview,
     };
 
-    if (typeof globalIssues !== 'undefined') {
-      globalIssues.push(newIssue);
-      toast.success("Problem reported successfully!");
-      
-      // Reset form
-      setFormData({ title: "", description: "", location: "" });
-      setSelectedImage(null);
-      setImagePreview(null);
-    }
+    // Add to window.globalIssues instead of globalIssues
+    window.globalIssues.push(newIssue);
+    toast.success("Problem reported successfully!");
+    
+    // Reset form
+    setFormData({ title: "", description: "", location: "" });
+    setSelectedImage(null);
+    setImagePreview(null);
   };
 
   const handleVoucherRedeem = (voucher: any) => {

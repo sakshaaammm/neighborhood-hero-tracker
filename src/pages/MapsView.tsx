@@ -4,15 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Loader } from "@googlemaps/js-api-loader";
 import { toast } from "sonner";
 
-declare const globalIssues: any[];
-
 export default function MapsView() {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
 
   useEffect(() => {
     const loader = new Loader({
-      apiKey: "YOUR_GOOGLE_MAPS_API_KEY", // Replace with your API key
+      apiKey: "YOUR_GOOGLE_MAPS_API_KEY", // You need to replace this with a real API key
       version: "weekly",
     });
 
@@ -37,9 +35,9 @@ export default function MapsView() {
     setMarkers([]);
 
     // Add markers for each issue
-    if (typeof globalIssues !== 'undefined' && globalIssues.length > 0) {
-      const newMarkers = globalIssues.map(issue => {
-        // Convert location string to coordinates (simplified for demo)
+    if (typeof window !== 'undefined' && window.globalIssues?.length > 0) {
+      const newMarkers = window.globalIssues.map(issue => {
+        // Convert location string to coordinates
         const [lat, lng] = issue.location.split(',').map(Number);
         
         if (isNaN(lat) || isNaN(lng)) return null;
@@ -71,7 +69,7 @@ export default function MapsView() {
 
       setMarkers(newMarkers);
     }
-  }, [map, globalIssues]);
+  }, [map]);
 
   return (
     <div className="min-h-screen p-6">

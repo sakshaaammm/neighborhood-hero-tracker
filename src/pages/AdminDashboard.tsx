@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,74 +12,32 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-// Access global issues (replace with proper state management)
-declare const globalIssues: any[];
-
 export default function AdminDashboard() {
-  const [issues, setIssues] = useState<any[]>([
-    {
-      id: 1,
-      title: "Pothole on Main Street",
-      description: "Large pothole causing traffic issues",
-      status: "pending",
-      reporter: "John Doe",
-      date: "2024-02-20",
-      location: "123 Main St",
-    },
-    {
-      id: 2,
-      title: "Broken Streetlight",
-      description: "Street light not working on Oak Avenue",
-      status: "in_progress",
-      reporter: "Jane Smith",
-      date: "2024-02-19",
-      location: "456 Oak Ave",
-    },
-    {
-      id: 3,
-      title: "Illegal Dumping",
-      description: "Garbage being dumped near the park",
-      status: "pending",
-      reporter: "Mike Johnson",
-      date: "2024-02-18",
-      location: "789 Park Rd",
-    },
-    {
-      id: 4,
-      title: "Graffiti on Wall",
-      description: "Vandalism on public property",
-      status: "completed",
-      reporter: "Sarah Williams",
-      date: "2024-02-17",
-      location: "321 Wall St",
-    },
-  ]);
+  const [issues, setIssues] = useState<any[]>([]);
 
   // Check for new issues periodically
   useEffect(() => {
     const checkNewIssues = () => {
-      if (typeof globalIssues !== 'undefined' && globalIssues.length > 0) {
-        setIssues(prev => {
-          const newIssues = globalIssues.filter(
-            issue => !prev.some(existingIssue => existingIssue.id === issue.id)
-          );
-          if (newIssues.length > 0) {
-            toast.info(`${newIssues.length} new issue(s) reported`);
-            return [...prev, ...newIssues];
-          }
-          return prev;
-        });
+      if (typeof window !== 'undefined' && window.globalIssues?.length > 0) {
+        setIssues(window.globalIssues);
       }
     };
 
+    // Check immediately on mount
+    checkNewIssues();
+    
+    // Then check every 2 seconds
     const interval = setInterval(checkNewIssues, 2000);
     return () => clearInterval(interval);
   }, []);
 
   const updateStatus = (id: number, status: string) => {
-    setIssues(issues.map(issue => 
+    const updatedIssues = issues.map(issue => 
       issue.id === id ? { ...issue, status } : issue
-    ));
+    );
+    setIssues(updatedIssues);
+    // Also update the global issues
+    window.globalIssues = updatedIssues;
     toast.success(`Issue status updated to ${status}`);
   };
 
