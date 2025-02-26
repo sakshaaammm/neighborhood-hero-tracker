@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,20 +17,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 
-// Initialize global issues array if it doesn't exist
-if (typeof window !== 'undefined' && !window.hasOwnProperty('globalIssues')) {
-  (window as any).globalIssues = [];
-}
-declare global {
-  interface Window {
-    globalIssues: any[];
-  }
-}
+// Mock global state (replace with proper state management)
+let globalIssues: any[] = [];
 
 export default function UserDashboard() {
-  const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState<"report" | "vouchers" | "progress">("report");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -77,13 +69,6 @@ export default function UserDashboard() {
       return;
     }
 
-    // Validate location format (latitude,longitude)
-    const [lat, lng] = formData.location.split(',').map(Number);
-    if (isNaN(lat) || isNaN(lng)) {
-      toast.error("Location must be in format: latitude,longitude (e.g., 40.7128,-74.0060)");
-      return;
-    }
-
     const newIssue = {
       id: Date.now(),
       ...formData,
@@ -93,8 +78,7 @@ export default function UserDashboard() {
       image: imagePreview,
     };
 
-    // Add to window.globalIssues instead of globalIssues
-    window.globalIssues.push(newIssue);
+    globalIssues.push(newIssue);
     toast.success("Problem reported successfully!");
     
     // Reset form
@@ -160,23 +144,13 @@ export default function UserDashboard() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Location (format: latitude,longitude)"
-                  className="w-full p-2 glass"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                />
-                <p className="text-sm text-white/60">Example: 40.7128,-74.0060 (New York)</p>
-                <Button
-                  className="w-full glass button-shine"
-                  onClick={() => navigate("/maps")}
-                >
-                  <MapPin className="mr-2" />
-                  View All Problems on Map
-                </Button>
-              </div>
+              <input
+                type="text"
+                placeholder="Location (e.g., '123 Main St' or coordinates)"
+                className="w-full p-2 glass"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              />
               <div className="space-y-2">
                 <input
                   type="file"
