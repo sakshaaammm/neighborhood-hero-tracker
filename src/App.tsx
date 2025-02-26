@@ -8,7 +8,6 @@ import { AuthProvider } from "./providers/AuthProvider";
 import Index from "./pages/Index";
 import UserDashboard from "./pages/UserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-import MapsView from "./pages/MapsView";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./providers/AuthProvider";
 
@@ -47,14 +46,6 @@ const App = () => {
                 element={
                   <ProtectedRoute allowedUserType="authority">
                     <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/maps"
-                element={
-                  <ProtectedRoute allowedUserType="resident">
-                    <MapsView />
                   </ProtectedRoute>
                 }
               />

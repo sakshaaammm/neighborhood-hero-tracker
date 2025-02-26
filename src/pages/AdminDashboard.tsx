@@ -8,7 +8,6 @@ import {
   AlertCircle,
   Award,
   User,
-  Image as ImageIcon,
   MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,22 +26,17 @@ declare global {
 export default function AdminDashboard() {
   const [issues, setIssues] = useState<any[]>([]);
 
-  // Check for new issues periodically
   useEffect(() => {
     const checkNewIssues = () => {
       if (typeof window !== 'undefined') {
-        // Initialize if undefined
         if (!window.globalIssues) {
           window.globalIssues = [];
         }
-        setIssues([...window.globalIssues]); // Create new array reference
+        setIssues([...window.globalIssues]);
       }
     };
 
-    // Check immediately on mount
     checkNewIssues();
-    
-    // Then check every 2 seconds
     const interval = setInterval(checkNewIssues, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -56,7 +50,6 @@ export default function AdminDashboard() {
       issue.id === id ? { ...issue, status } : issue
     );
     setIssues(updatedIssues);
-    // Also update the global issues
     window.globalIssues = updatedIssues;
     toast.success(`Issue status updated to ${status}`);
   };
