@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,6 +53,39 @@ const generateDescription = (title: string, category: string) => {
   };
   return descriptions[title as keyof typeof descriptions] || 
     `Issue related to ${category} requiring immediate attention.`;
+};
+
+// Typing text component
+const TypedText = ({ text, speed = 50, className = "" }: { text: string; speed?: number; className?: string }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
+  const currentIndex = useRef(0);
+
+  useEffect(() => {
+    if (isTyping && currentIndex.current < text.length) {
+      const timer = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex.current]);
+        currentIndex.current += 1;
+      }, speed);
+      
+      if (currentIndex.current >= text.length) {
+        setIsTyping(false);
+      }
+      
+      return () => clearTimeout(timer);
+    } else if (!isTyping && currentIndex.current === text.length) {
+      // Reset typing after a delay
+      const resetTimer = setTimeout(() => {
+        setDisplayedText("");
+        currentIndex.current = 0;
+        setIsTyping(true);
+      }, 3000);
+      
+      return () => clearTimeout(resetTimer);
+    }
+  }, [displayedText, isTyping, text, speed]);
+
+  return <span className={className}>{displayedText}<span className="animate-pulse">|</span></span>;
 };
 
 export default function UserDashboard() {
@@ -162,27 +195,30 @@ export default function UserDashboard() {
 
   return (
     <div className="min-h-screen p-6 space-y-8">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm z-0" />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-0" />
       
       <div className="relative z-10">
         <div className="flex flex-wrap gap-4 mb-8">
           <Button
             onClick={() => setSelectedTab("report")}
-            className={`glass ${selectedTab === "report" ? "bg-white/20" : ""}`}
+            variant="glass"
+            className={selectedTab === "report" ? "bg-white/20 shadow-lg shadow-white/10" : ""}
           >
             <MapPin className="mr-2" />
             Report Problem
           </Button>
           <Button
             onClick={() => setSelectedTab("vouchers")}
-            className={`glass ${selectedTab === "vouchers" ? "bg-white/20" : ""}`}
+            variant="glass"
+            className={selectedTab === "vouchers" ? "bg-white/20 shadow-lg shadow-white/10" : ""}
           >
             <Gift className="mr-2" />
             Vouchers
           </Button>
           <Button
             onClick={() => setSelectedTab("progress")}
-            className={`glass ${selectedTab === "progress" ? "bg-white/20" : ""}`}
+            variant="glass"
+            className={selectedTab === "progress" ? "bg-white/20 shadow-lg shadow-white/10" : ""}
           >
             <TrendingUp className="mr-2" />
             Track Progress
@@ -190,15 +226,18 @@ export default function UserDashboard() {
         </div>
 
         {selectedTab === "report" && (
-          <Card className="p-6 glass animate-fadeIn">
-            <h2 className="text-2xl font-semibold mb-4 text-glow">Report a Problem</h2>
+          <Card className="p-6 neo-blur animate-fadeIn">
+            <h2 className="text-2xl font-semibold mb-2 text-yellow-400 text-glow">
+              <TypedText text="Report a Problem" speed={70} className="font-bold" />
+            </h2>
+            <p className="text-white/70 mb-4">Select from common issues or create your own report</p>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
               {sampleProblems.map((problem) => (
                 <Button
                   key={problem.id}
                   onClick={() => handleSampleProblemSelect(problem)}
-                  className="glass hover:bg-white/10"
+                  variant="glass"
                 >
                   {problem.title}
                 </Button>
@@ -228,7 +267,8 @@ export default function UserDashboard() {
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 />
                 <Button 
-                  className="glass button-shine"
+                  variant="glass"
+                  className="button-shine"
                   onClick={getCurrentLocation}
                 >
                   <MapPin className="mr-2" />
@@ -244,7 +284,7 @@ export default function UserDashboard() {
                   onChange={handleImageChange}
                 />
                 <label htmlFor="image-upload">
-                  <Button className="glass button-shine" asChild>
+                  <Button variant="glass" className="button-shine" asChild>
                     <span>
                       <Upload className="mr-2" />
                       Upload Media
@@ -259,7 +299,8 @@ export default function UserDashboard() {
                       className="rounded-lg w-full h-48 object-cover"
                     />
                     <Button
-                      className="absolute top-2 right-2 glass"
+                      variant="glass"
+                      className="absolute top-2 right-2"
                       onClick={() => {
                         setSelectedImage(null);
                         setImagePreview(null);
@@ -270,7 +311,7 @@ export default function UserDashboard() {
                   </div>
                 )}
               </div>
-              <Button className="w-full glass button-shine" onClick={handleSubmit}>
+              <Button variant="glass" className="w-full button-shine" onClick={handleSubmit}>
                 Submit Report
               </Button>
             </div>
@@ -279,13 +320,21 @@ export default function UserDashboard() {
 
         {selectedTab === "vouchers" && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
+            <div className="col-span-full mb-2">
+              <h2 className="text-2xl font-semibold text-yellow-400 text-glow">
+                <TypedText text="Available Vouchers" speed={70} className="font-bold" />
+              </h2>
+              <p className="text-white/70">Redeem your points for exclusive benefits</p>
+            </div>
+            
             {vouchers.map((voucher) => (
-              <Card key={voucher.id} className="p-6 glass hover:scale-105 transition-duration-300">
+              <Card key={voucher.id} className="p-6 neo-blur hover:scale-105 transition-duration-300">
                 <Gift className="w-12 h-12 mb-4 text-yellow-400" />
-                <h3 className="text-xl font-semibold mb-2 text-glow">{voucher.title}</h3>
+                <h3 className="text-xl font-semibold mb-2 text-yellow-400">{voucher.title}</h3>
                 <p className="text-white/70">{voucher.points} Points</p>
                 <Button 
-                  className="mt-4 w-full glass button-shine"
+                  variant="glass"
+                  className="mt-4 w-full button-shine"
                   disabled={voucher.redeemed}
                   onClick={() => handleVoucherRedeem(voucher)}
                 >
@@ -297,8 +346,12 @@ export default function UserDashboard() {
         )}
 
         {selectedTab === "progress" && (
-          <Card className="p-6 glass animate-fadeIn">
-            <h2 className="text-2xl font-semibold mb-4 text-glow">Top Contributors</h2>
+          <Card className="p-6 neo-blur animate-fadeIn">
+            <h2 className="text-2xl font-semibold mb-2 text-yellow-400 text-glow">
+              <TypedText text="Top Contributors" speed={70} className="font-bold" />
+            </h2>
+            <p className="text-white/70 mb-4">See how you rank among the city's problem solvers</p>
+            
             <div className="space-y-4">
               {topReporters.map((reporter) => (
                 <div
@@ -306,7 +359,7 @@ export default function UserDashboard() {
                   className="flex items-center justify-between p-4 glass rounded-lg"
                 >
                   <div>
-                    <h3 className="font-semibold text-glow">{reporter.name}</h3>
+                    <h3 className="font-semibold text-yellow-400">{reporter.name}</h3>
                     <p className="text-white/70">{reporter.issues} Issues Reported</p>
                   </div>
                   <div className="text-right">
@@ -327,7 +380,8 @@ export default function UserDashboard() {
               {companies.map((company) => (
                 <Button
                   key={company}
-                  className="glass button-shine"
+                  variant="glass"
+                  className="button-shine"
                   onClick={() => handleCompanySelect(company)}
                 >
                   {company}
