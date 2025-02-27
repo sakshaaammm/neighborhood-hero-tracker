@@ -4,21 +4,53 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./providers/AuthProvider";
+import { AuthProvider, useAuth } from "./providers/AuthProvider";
 import Index from "./pages/Index";
 import UserDashboard from "./pages/UserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import { useAuth } from "./providers/AuthProvider";
 
 const ProtectedRoute = ({ children, allowedUserType }: { children: React.ReactNode; allowedUserType: "resident" | "authority" }) => {
   const { isAuthenticated, userType } = useAuth();
   
-  if (!isAuthenticated || userType !== allowedUserType) {
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" />;
+  }
+  
+  if (userType !== allowedUserType) {
     return <Navigate to="/" />;
   }
   
   return <>{children}</>;
+};
+
+const AppRoutes = () => {
+  const { isAuthenticated } = useAuth();
+  
+  return (
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/auth" element={isAuthenticated ? <Navigate to="/" /> : <Auth />} />
+      <Route
+        path="/user-dashboard"
+        element={
+          <ProtectedRoute allowedUserType="resident">
+            <UserDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin-dashboard"
+        element={
+          <ProtectedRoute allowedUserType="authority">
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
 };
 
 const App = () => {
@@ -31,26 +63,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route
-                path="/user-dashboard"
-                element={
-                  <ProtectedRoute allowedUserType="resident">
-                    <UserDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin-dashboard"
-                element={
-                  <ProtectedRoute allowedUserType="authority">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppRoutes />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
