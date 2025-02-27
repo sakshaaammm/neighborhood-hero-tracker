@@ -82,15 +82,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAuthenticated(true);
   };
 
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     const { error } = await supabase.auth.signOut();
-    if (!error) {
-      setIsAuthenticated(false);
-      setUserType(null);
-      setUser(null);
-      setSession(null);
+    
+    // Reset auth state regardless of error
+    setIsAuthenticated(false);
+    setUserType(null);
+    setUser(null);
+    setSession(null);
+    
+    // If there's an error, log it but don't return it
+    if (error) {
+      console.error("Error during logout:", error);
     }
-    return { error };
   };
 
   const signUp = async (email: string, password: string, type: UserType) => {

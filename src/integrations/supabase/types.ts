@@ -9,7 +9,119 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      issues: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: number
+          image_url: string | null
+          location: string
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: number
+          image_url?: string | null
+          location: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: number
+          image_url?: string | null
+          location?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          id: string
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          id: string
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          id?: string
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
+      user_vouchers: {
+        Row: {
+          id: number
+          redeemed_at: string | null
+          redeemed_at_company: string | null
+          user_id: string
+          voucher_id: number
+        }
+        Insert: {
+          id?: number
+          redeemed_at?: string | null
+          redeemed_at_company?: string | null
+          user_id: string
+          voucher_id: number
+        }
+        Update: {
+          id?: number
+          redeemed_at?: string | null
+          redeemed_at_company?: string | null
+          user_id?: string
+          voucher_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_vouchers_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vouchers: {
+        Row: {
+          active: boolean | null
+          description: string | null
+          id: number
+          points: number
+          title: string
+        }
+        Insert: {
+          active?: boolean | null
+          description?: string | null
+          id?: number
+          points: number
+          title: string
+        }
+        Update: {
+          active?: boolean | null
+          description?: string | null
+          id?: number
+          points?: number
+          title?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
