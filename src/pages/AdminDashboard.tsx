@@ -8,13 +8,20 @@ import {
   AlertCircle,
   Award,
   User,
-  Image as ImageIcon,
   MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 
-// Access global issues (replace with proper state management)
-declare const globalIssues: any[];
+// Initialize global issues if it doesn't exist
+if (typeof window !== 'undefined' && !window.hasOwnProperty('globalIssues')) {
+  (window as any).globalIssues = [];
+}
+
+declare global {
+  interface Window {
+    globalIssues: any[];
+  }
+}
 
 export default function AdminDashboard() {
   const [issues, setIssues] = useState<any[]>([
@@ -56,31 +63,46 @@ export default function AdminDashboard() {
     },
   ]);
 
-  // Check for new issues periodically
+  // Load existing issues and check for new ones
   useEffect(() => {
-    const checkNewIssues = () => {
-      if (typeof globalIssues !== 'undefined' && globalIssues.length > 0) {
-        setIssues(prev => {
-          const newIssues = globalIssues.filter(
-            issue => !prev.some(existingIssue => existingIssue.id === issue.id)
-          );
-          if (newIssues.length > 0) {
-            toast.info(`${newIssues.length} new issue(s) reported`);
-            return [...prev, ...newIssues];
-          }
-          return prev;
-        });
+    // Initialize global issues if not already done
+    if (typeof window !== 'undefined') {
+      if (!window.globalIssues) {
+        window.globalIssues = [...issues];
+      } else {
+        // Merge default issues with existing global issues
+        const existingIds = window.globalIssues.map((issue: any) => issue.id);
+        const newDefaultIssues = issues.filter(issue => !existingIds.includes(issue.id));
+        if (newDefaultIssues.length > 0) {
+          window.globalIssues = [...window.globalIssues, ...newDefaultIssues];
+        }
       }
-    };
-
-    const interval = setInterval(checkNewIssues, 2000);
+      
+      // Set issues from global issues
+      setIssues([...window.globalIssues]);
+    }
+    
+    // Check for new issues periodically
+    const interval = setInterval(() => {
+      if (typeof window !== 'undefined' && window.globalIssues) {
+        setIssues([...window.globalIssues]);
+      }
+    }, 2000);
+    
     return () => clearInterval(interval);
   }, []);
 
   const updateStatus = (id: number, status: string) => {
-    setIssues(issues.map(issue => 
+    const updatedIssues = issues.map(issue => 
       issue.id === id ? { ...issue, status } : issue
-    ));
+    );
+    
+    // Update both local state and global issues
+    setIssues(updatedIssues);
+    if (typeof window !== 'undefined') {
+      window.globalIssues = updatedIssues;
+    }
+    
     toast.success(`Issue status updated to ${status}`);
   };
 
@@ -107,72 +129,82 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold text-glow">Admin Dashboard</h1>
         
         <div className="space-y-6">
-          {issues.map((issue) => (
-            <Card key={issue.id} className="p-6 glass hover:bg-white/10 transition-all">
-              <div className="flex items-start justify-between gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(issue.status)}
-                    <h3 className="text-xl font-semibold text-glow">{issue.title}</h3>
-                  </div>
-                  <p className="text-white/70">{issue.description}</p>
-                  <div className="flex items-center gap-2 text-sm text-white/50">
-                    <User size={16} />
-                    <span>{issue.reporter}</span>
-                    <span>•</span>
-                    <span>{issue.date}</span>
-                    <span>•</span>
-                    <MapPin size={16} />
-                    <span>{issue.location}</span>
-                  </div>
-                  {issue.image && (
-                    <div className="mt-4">
-                      <img
-                        src={issue.image}
-                        alt="Problem"
-                        className="rounded-lg max-h-48 object-cover"
-                      />
+          {issues.length > 0 ? (
+            issues.map((issue) => (
+              <Card key={issue.id} className="p-6 glass hover:bg-white/10 transition-all">
+                <div className="flex items-start justify-between gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(issue.status)}
+                      <h3 className="text-xl font-semibold text-glow">{issue.title}</h3>
                     </div>
-                  )}
+                    <p className="text-white/70">{issue.description}</p>
+                    <div className="flex items-center gap-2 text-sm text-white/50">
+                      <User size={16} />
+                      <span>{issue.reporter}</span>
+                      <span>•</span>
+                      <span>{issue.date}</span>
+                      <span>•</span>
+                      <MapPin size={16} />
+                      <span>{issue.location}</span>
+                    </div>
+                    {issue.image && (
+                      <div className="mt-4">
+                        <img
+                          src={issue.image}
+                          alt="Problem"
+                          className="rounded-lg max-h-48 object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      size="sm"
+                      variant="glass"
+                      className={issue.status === "pending" ? "bg-white/20" : ""}
+                      onClick={() => updateStatus(issue.id, "pending")}
+                    >
+                      <AlertCircle className="mr-2 h-4 w-4" />
+                      Pending
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="glass"
+                      className={issue.status === "in_progress" ? "bg-white/20" : ""}
+                      onClick={() => updateStatus(issue.id, "in_progress")}
+                    >
+                      <Clock className="mr-2 h-4 w-4" />
+                      In Progress
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="glass"
+                      className={issue.status === "completed" ? "bg-white/20" : ""}
+                      onClick={() => updateStatus(issue.id, "completed")}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Completed
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="glass"
+                      className="button-shine"
+                      onClick={() => awardPoints(issue.reporter)}
+                    >
+                      <Award className="mr-2 h-4 w-4" />
+                      Award Points
+                    </Button>
+                  </div>
                 </div>
-                
-                <div className="flex flex-col gap-2">
-                  <Button
-                    size="sm"
-                    className={`glass ${issue.status === "pending" ? "bg-white/20" : ""}`}
-                    onClick={() => updateStatus(issue.id, "pending")}
-                  >
-                    <AlertCircle className="mr-2 h-4 w-4" />
-                    Pending
-                  </Button>
-                  <Button
-                    size="sm"
-                    className={`glass ${issue.status === "in_progress" ? "bg-white/20" : ""}`}
-                    onClick={() => updateStatus(issue.id, "in_progress")}
-                  >
-                    <Clock className="mr-2 h-4 w-4" />
-                    In Progress
-                  </Button>
-                  <Button
-                    size="sm"
-                    className={`glass ${issue.status === "completed" ? "bg-white/20" : ""}`}
-                    onClick={() => updateStatus(issue.id, "completed")}
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Completed
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="glass button-shine"
-                    onClick={() => awardPoints(issue.reporter)}
-                  >
-                    <Award className="mr-2 h-4 w-4" />
-                    Award Points
-                  </Button>
-                </div>
-              </div>
+              </Card>
+            ))
+          ) : (
+            <Card className="p-6 glass text-center">
+              <p className="text-white/70">No issues reported yet.</p>
             </Card>
-          ))}
+          )}
         </div>
       </div>
     </div>
