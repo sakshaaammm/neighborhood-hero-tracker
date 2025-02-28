@@ -26,12 +26,15 @@ const ProtectedRoute = ({ children, allowedUserType }: { children: React.ReactNo
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userType } = useAuth();
+  
+  // Debug output
+  console.log("Authentication state:", { isAuthenticated, userType });
   
   return (
     <Routes>
       <Route path="/" element={<Index />} />
-      <Route path="/auth" element={isAuthenticated ? <Navigate to="/" /> : <Auth />} />
+      <Route path="/auth" element={isAuthenticated ? <Navigate to={userType === "resident" ? "/user-dashboard" : "/admin-dashboard"} /> : <Auth />} />
       <Route
         path="/user-dashboard"
         element={

@@ -81,6 +81,20 @@ export default function Index() {
           </Button>
         )}
       </div>
+      
+      {/* Status indicator for debugging */}
+      <div className="relative z-10 text-sm text-white/50 mt-8">
+        Status: {isAuthenticated ? `Logged in as ${userType}` : "Not logged in"}
+        {isAuthenticated && (
+          <Button
+            variant="link"
+            className="text-blue-400 ml-2 p-0"
+            onClick={() => navigate(userType === "resident" ? "/user-dashboard" : "/admin-dashboard")}
+          >
+            Go to Dashboard
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
