@@ -120,12 +120,6 @@ export default function UserDashboard() {
     { id: 3, title: "Utility Bill Discount", points: 150, redeemed: true },
   ];
 
-  const topReporters = [
-    { id: 1, name: "John Doe", points: 500, issues: 15 },
-    { id: 2, name: "Jane Smith", points: 450, issues: 12 },
-    { id: 3, name: "Mike Johnson", points: 400, issues: 10 },
-  ];
-
   // Fetch recent issues reported by the current user
   useEffect(() => {
     const fetchUserIssues = async () => {
@@ -330,7 +324,12 @@ export default function UserDashboard() {
   };
 
   return (
-    <div className="min-h-screen p-6 space-y-8">
+    <div className="min-h-screen p-6 space-y-8" style={{
+      backgroundImage: "url('https://w0.peakpx.com/wallpaper/618/940/HD-wallpaper-city-neighborhoods-perspective-light-electricity-shining-stars.jpg')",
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat"
+    }}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-0" />
       
       <div className="relative z-10">
