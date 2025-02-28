@@ -120,6 +120,12 @@ export default function UserDashboard() {
     { id: 3, title: "Utility Bill Discount", points: 150, redeemed: true },
   ];
 
+  const topReporters = [
+    { id: 1, name: "John Doe", points: 500, issues: 15 },
+    { id: 2, name: "Jane Smith", points: 450, issues: 12 },
+    { id: 3, name: "Mike Johnson", points: 400, issues: 10 },
+  ];
+
   // Fetch recent issues reported by the current user
   useEffect(() => {
     const fetchUserIssues = async () => {
