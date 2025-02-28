@@ -39,19 +39,10 @@ export default function Auth() {
       if (data.user) {
         const userType = data.user.user_metadata.user_type;
         toast.success(`Welcome back, ${data.user.email}`);
-        
-        // Explicitly navigate based on user type
-        if (userType === "resident") {
-          navigate("/user-dashboard");
-        } else if (userType === "authority") {
-          navigate("/admin-dashboard");
-        } else {
-          navigate("/");
-        }
+        navigate(userType === "resident" ? "/user-dashboard" : "/admin-dashboard");
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in");
-      console.error("Sign in error:", error);
     } finally {
       setLoading(false);
     }
@@ -88,7 +79,6 @@ export default function Auth() {
       }
     } catch (error: any) {
       toast.error(error.error_description || error.message || "Failed to sign up");
-      console.error("Sign up error:", error);
     } finally {
       setLoading(false);
     }

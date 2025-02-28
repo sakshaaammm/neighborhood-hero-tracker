@@ -36,7 +36,8 @@
   body {
     @apply bg-background text-foreground antialiased overflow-x-hidden;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
-    background-color: #222222;
+    background: url('https://w0.peakpx.com/wallpaper/618/940/HD-wallpaper-city-neighborhoods-perspective-light-electricity-shining-stars-thumbnail.jpg') no-repeat center center fixed;
+    background-size: cover;
   }
 
   html {
@@ -101,21 +102,6 @@
     }
     100% {
       transform: translateY(0px);
-    }
-  }
-
-  .animate-fadeIn {
-    animation: fadeIn 0.5s ease-in-out forwards;
-  }
-
-  @keyframes fadeIn {
-    0% {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0);
     }
   }
 }

@@ -24,16 +24,8 @@ export default function Index() {
   };
 
   return (
-    <div 
-      className="relative min-h-screen w-full flex flex-col items-center justify-center p-4 space-y-8 animate-fadeIn overflow-hidden"
-      style={{
-        backgroundImage: "url('https://w0.peakpx.com/wallpaper/618/940/HD-wallpaper-city-neighborhoods-perspective-light-electricity-shining-stars.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat"
-      }}
-    >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-0" />
+    <div className="relative min-h-screen w-full flex flex-col items-center justify-center p-4 space-y-8 animate-fadeIn overflow-hidden">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm z-0" />
       
       <div className="relative z-10 text-center space-y-4 animate-float">
         <h1 className="text-5xl font-bold tracking-tight text-glow" style={{ fontFamily: 'Playfair Display, serif' }}>
@@ -86,20 +78,6 @@ export default function Index() {
             onClick={() => navigate("/auth")}
           >
             Get Started
-          </Button>
-        )}
-      </div>
-      
-      {/* Status indicator for debugging */}
-      <div className="relative z-10 text-sm text-white/50 mt-8">
-        Status: {isAuthenticated ? `Logged in as ${userType}` : "Not logged in"}
-        {isAuthenticated && (
-          <Button
-            variant="link"
-            className="text-blue-400 ml-2 p-0"
-            onClick={() => navigate(userType === "resident" ? "/user-dashboard" : "/admin-dashboard")}
-          >
-            Go to Dashboard
           </Button>
         )}
       </div>
