@@ -9,7 +9,6 @@ import {
   Upload,
   FileText,
   Clock,
-  AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -18,8 +17,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/providers/AuthProvider";
 
 // Initialize global issues if it doesn't exist
 if (typeof window !== 'undefined' && !window.hasOwnProperty('globalIssues')) {
@@ -102,9 +99,6 @@ export default function UserDashboard() {
   });
   const [showCompanies, setShowCompanies] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
-  const [recentIssues, setRecentIssues] = useState<any[]>([]);
-  const [isLoadingIssues, setIsLoadingIssues] = useState(true);
-  const { user } = useAuth();
 
   const companies = [
     "Metro Supermarket",
@@ -125,57 +119,6 @@ export default function UserDashboard() {
     { id: 2, name: "Jane Smith", points: 450, issues: 12 },
     { id: 3, name: "Mike Johnson", points: 400, issues: 10 },
   ];
-
-  // Fetch recent issues reported by the current user
-  useEffect(() => {
-    const fetchUserIssues = async () => {
-      if (!user) {
-        setIsLoadingIssues(false);
-        return;
-      }
-
-      try {
-        // First try to fetch from Supabase
-        const { data, error } = await supabase
-          .from('issues')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(5);
-
-        if (error) {
-          throw error;
-        }
-
-        if (data && data.length > 0) {
-          setRecentIssues(data);
-        } else {
-          // If no data in Supabase, fall back to window.globalIssues
-          const userIssues = window.globalIssues
-            .filter(issue => issue.reporter === "Demo User")
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 5);
-          
-          setRecentIssues(userIssues);
-        }
-      } catch (error) {
-        console.error("Error fetching user issues:", error);
-        toast.error("Failed to load recent issues");
-        
-        // Fall back to window.globalIssues
-        const userIssues = window.globalIssues
-          .filter(issue => issue.reporter === "Demo User")
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .slice(0, 5);
-        
-        setRecentIssues(userIssues);
-      } finally {
-        setIsLoadingIssues(false);
-      }
-    };
-
-    fetchUserIssues();
-  }, [user]);
 
   const handleSampleProblemSelect = (problem: typeof sampleProblems[0]) => {
     setFormData({
@@ -214,96 +157,29 @@ export default function UserDashboard() {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!formData.title || !formData.description || !formData.location) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    try {
-      let imageUrl = null;
-      
-      // Upload image to Supabase Storage if available
-      if (selectedImage && user) {
-        const fileExt = selectedImage.name.split('.').pop();
-        const filePath = `${user.id}/${Date.now()}.${fileExt}`;
-        
-        try {
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('issue_images')
-            .upload(filePath, selectedImage);
-            
-          if (uploadError) {
-            throw uploadError;
-          }
-          
-          if (uploadData) {
-            // Get public URL for the uploaded image
-            const { data: { publicUrl } } = supabase.storage
-              .from('issue_images')
-              .getPublicUrl(filePath);
-              
-            imageUrl = publicUrl;
-          }
-        } catch (uploadError) {
-          console.error("Error uploading image:", uploadError);
-          // Continue without image if upload fails
-        }
-      }
+    const newIssue = {
+      id: Date.now(),
+      ...formData,
+      status: "pending",
+      reporter: "Demo User",
+      date: new Date().toISOString().split('T')[0],
+      image: imagePreview,
+    };
 
-      // Create issue object
-      const newIssue = {
-        title: formData.title,
-        description: formData.description,
-        location: formData.location,
-        image_url: imageUrl || imagePreview,
-        user_id: user?.id || 'anonymous',
-      };
-
-      // Try to save to Supabase if user is authenticated
-      if (user) {
-        const { data, error } = await supabase
-          .from('issues')
-          .insert([newIssue])
-          .select();
-          
-        if (error) {
-          throw error;
-        }
-        
-        if (data && data.length > 0) {
-          // Add to recent issues
-          setRecentIssues(prevIssues => [data[0], ...prevIssues.slice(0, 4)]);
-        }
-      }
-
-      // Also save to window.globalIssues for demo purposes
-      const localIssue = {
-        id: Date.now(),
-        ...formData,
-        status: "pending",
-        reporter: "Demo User",
-        date: new Date().toISOString().split('T')[0],
-        image: imagePreview,
-      };
-      
-      window.globalIssues = [...(window.globalIssues || []), localIssue];
-      
-      // If not saved to Supabase, add to recent issues
-      if (!user) {
-        setRecentIssues(prevIssues => [localIssue, ...prevIssues.slice(0, 4)]);
-      }
-      
-      toast.success("Problem reported successfully!");
-      
-      // Reset form
-      setFormData({ title: "", description: "", location: "" });
-      setSelectedImage(null);
-      setImagePreview(null);
-    } catch (error) {
-      console.error("Error submitting issue:", error);
-      toast.error("Failed to submit report. Please try again.");
-    }
+    // Add to window.globalIssues
+    window.globalIssues = [...(window.globalIssues || []), newIssue];
+    toast.success("Problem reported successfully!");
+    
+    // Reset form
+    setFormData({ title: "", description: "", location: "" });
+    setSelectedImage(null);
+    setImagePreview(null);
   };
 
   const handleVoucherRedeem = (voucher: any) => {
@@ -315,18 +191,6 @@ export default function UserDashboard() {
     toast.success(`Voucher redeemed at ${company}!`);
     setShowCompanies(false);
     setSelectedVoucher(null);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-        return 'text-green-400';
-      case 'in progress':
-        return 'text-blue-400';
-      case 'pending':
-      default:
-        return 'text-yellow-400';
-    }
   };
 
   return (
@@ -484,55 +348,25 @@ export default function UserDashboard() {
         {selectedTab === "progress" && (
           <Card className="p-6 neo-blur animate-fadeIn">
             <h2 className="text-2xl font-semibold mb-2 text-yellow-400 text-glow">
-              <TypedText text="Your Recent Issues" speed={70} className="font-bold" />
+              <TypedText text="Top Contributors" speed={70} className="font-bold" />
             </h2>
-            <p className="text-white/70 mb-4">Track the status of problems you've reported</p>
+            <p className="text-white/70 mb-4">See how you rank among the city's problem solvers</p>
             
             <div className="space-y-4">
-              {isLoadingIssues ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-white/70">Loading your recent issues...</p>
-                </div>
-              ) : recentIssues.length > 0 ? (
-                recentIssues.map((issue) => (
-                  <div
-                    key={issue.id}
-                    className="flex flex-col md:flex-row gap-4 p-4 glass rounded-lg"
-                  >
-                    {(issue.image_url || issue.image) && (
-                      <div className="flex-shrink-0">
-                        <img 
-                          src={issue.image_url || issue.image} 
-                          alt={issue.title} 
-                          className="w-full md:w-24 h-24 object-cover rounded-lg"
-                        />
-                      </div>
-                    )}
-                    <div className="flex-grow">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-semibold text-yellow-400">{issue.title}</h3>
-                        <span className={`text-sm px-2 py-1 rounded-full bg-white/10 ${getStatusColor(issue.status)}`}>
-                          {issue.status || "Pending"}
-                        </span>
-                      </div>
-                      <p className="text-white/70 text-sm line-clamp-2 mt-1">{issue.description}</p>
-                      <div className="flex items-center mt-2 text-xs text-white/50">
-                        <Clock className="w-3 h-3 mr-1" />
-                        <span>{issue.created_at ? new Date(issue.created_at).toLocaleDateString() : issue.date}</span>
-                        <MapPin className="w-3 h-3 ml-3 mr-1" />
-                        <span className="truncate">{issue.location}</span>
-                      </div>
-                    </div>
+              {topReporters.map((reporter) => (
+                <div
+                  key={reporter.id}
+                  className="flex items-center justify-between p-4 glass rounded-lg"
+                >
+                  <div>
+                    <h3 className="font-semibold text-yellow-400">{reporter.name}</h3>
+                    <p className="text-white/70">{reporter.issues} Issues Reported</p>
                   </div>
-                ))
-              ) : (
-                <div className="text-center p-8 glass rounded-lg">
-                  <AlertCircle className="w-12 h-12 text-yellow-400 mx-auto mb-2" />
-                  <h3 className="text-yellow-400 text-lg font-semibold">No Issues Found</h3>
-                  <p className="text-white/70 mt-2">You haven't reported any issues yet. Use the Report Problem tab to get started.</p>
+                  <div className="text-right">
+                    <p className="text-yellow-400 font-bold">{reporter.points} Points</p>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           </Card>
         )}
