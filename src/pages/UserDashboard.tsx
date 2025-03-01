@@ -10,6 +10,7 @@ import {
   FileText,
   Clock,
   User,
+  Award,
 } from "lucide-react";
 import {
   Dialog,

@@ -55,3 +55,6 @@ backend = "postgres"
 
 [ai]
 enabled = false
+
+[realtime]
+enabled = true
