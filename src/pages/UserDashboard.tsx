@@ -45,7 +45,7 @@ const sampleProblems = [
 ];
 
 const generateDescription = (title: string, category: string) => {
-  const descriptions = {
+  const descriptions: {[key: string]: string} = {
     "Pothole": "A significant road surface depression causing potential vehicle damage and traffic hazards.",
     "Street Light": "Non-functional street light creating visibility issues and safety concerns in the area.",
     "Garbage": "Accumulated waste requiring immediate collection and disposal to maintain cleanliness.",
@@ -55,7 +55,7 @@ const generateDescription = (title: string, category: string) => {
     "Graffiti": "Unauthorized graffiti on public property requiring cleaning.",
     "Park Maintenance": "Park facilities requiring maintenance and repair for public safety.",
   };
-  return descriptions[title as keyof typeof descriptions] || 
+  return descriptions[title] || 
     `Issue related to ${category} requiring immediate attention.`;
 };
 
@@ -214,7 +214,7 @@ export default function UserDashboard() {
         (payload) => {
           console.log('Profile change received:', payload);
           // Update points if they changed
-          if (payload.new && payload.new.points !== undefined) {
+          if (payload.new && 'points' in payload.new) {
             setUserPoints(payload.new.points || 0);
             toast.success(`Your points have been updated: ${payload.new.points}`);
           }

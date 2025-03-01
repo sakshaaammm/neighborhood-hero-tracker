@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,10 +67,7 @@ export default function AdminDashboard() {
         .from('issues')
         .select(`
           *,
-          profiles:user_id (
-            username,
-            id
-          )
+          profiles(username, id, points)
         `)
         .order('created_at', { ascending: false });
       
