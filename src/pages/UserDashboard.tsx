@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +31,14 @@ declare global {
     globalIssues: any[];
   }
 }
+
+// Update reporter type to use string IDs instead of number
+type Reporter = {
+  id: string;  // Changed from number to string to match UUID from Supabase
+  name: string;
+  points: number;
+  issues: number;
+};
 
 const sampleProblems = [
   { id: 1, title: "Pothole", category: "Road Infrastructure" },
@@ -109,6 +116,13 @@ export default function UserDashboard() {
   const [myIssues, setMyIssues] = useState<any[]>([]);
   const [isLoadingIssues, setIsLoadingIssues] = useState(true);
 
+  // Update the type to match what we defined above
+  const [topReporters, setTopReporters] = useState<Reporter[]>([
+    { id: "1", name: "John Doe", points: 500, issues: 15 },
+    { id: "2", name: "Jane Smith", points: 450, issues: 12 },
+    { id: "3", name: "Mike Johnson", points: 400, issues: 10 },
+  ]);
+
   const { user, isAuthenticated } = useAuth();
 
   const companies = [
@@ -123,12 +137,6 @@ export default function UserDashboard() {
     { id: 1, title: "10% Hospital Discount", points: 100, redeemed: false },
     { id: 2, title: "Shopping Gift Card $50", points: 200, redeemed: false },
     { id: 3, title: "Utility Bill Discount", points: 150, redeemed: true },
-  ]);
-
-  const [topReporters, setTopReporters] = useState([
-    { id: 1, name: "John Doe", points: 500, issues: 15 },
-    { id: 2, name: "Jane Smith", points: 450, issues: 12 },
-    { id: 3, name: "Mike Johnson", points: 400, issues: 10 },
   ]);
 
   useEffect(() => {
@@ -186,13 +194,14 @@ export default function UserDashboard() {
               .eq('user_id', reporter.id);
               
             return {
-              id: reporter.id,
+              id: reporter.id,  // This is now a string (UUID)
               name: reporter.username || "Anonymous",
               points: reporter.points || 0,
               issues: count || 0
             };
           }));
           
+          // Now topWithIssues has the correct type (Reporter[])
           setTopReporters(topWithIssues);
         }
       } catch (error) {
