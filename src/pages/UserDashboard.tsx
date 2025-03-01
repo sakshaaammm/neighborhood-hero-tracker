@@ -1,729 +1,608 @@
-import { useState, useEffect, useRef } from "react";
-import { Card } from "@/components/ui/card";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
 import {
-  MapPin,
-  Gift,
-  TrendingUp,
-  Upload,
-  FileText,
-  Clock,
-  User,
-  Award,
-} from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from "@/components/ui/chart";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Trophy, MoreVertical, User, Search } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 
-// Initialize global issues if it doesn't exist
-if (typeof window !== 'undefined' && !window.hasOwnProperty('globalIssues')) {
-  (window as any).globalIssues = [];
+// Define the issue type with proper types
+interface Issue {
+  id: number;
+  title: string;
+  description: string;
+  location: string;
+  status: string;
+  date: string;
+  reporter: string;
+  reporter_id: string;
+  image_url?: string | null;
+  user_id: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+  profiles?: {
+    username?: string;
+    id?: string;
+  } | null;
 }
 
-declare global {
-  interface Window {
-    globalIssues: any[];
-  }
-}
-
-// Update reporter type to use string IDs instead of number
-type Reporter = {
-  id: string;  // Changed from number to string to match UUID from Supabase
-  name: string;
-  points: number;
-  issues: number;
-};
-
-const sampleProblems = [
-  { id: 1, title: "Pothole", category: "Road Infrastructure" },
-  { id: 2, title: "Street Light", category: "Public Lighting" },
-  { id: 3, title: "Garbage", category: "Sanitation" },
-  { id: 4, title: "Tree Fallen", category: "Environment" },
-  { id: 5, title: "Water Leakage", category: "Utilities" },
-  { id: 6, title: "Traffic Signal", category: "Traffic Management" },
-  { id: 7, title: "Graffiti", category: "Public Property" },
-  { id: 8, title: "Park Maintenance", category: "Public Spaces" },
-];
-
-const generateDescription = (title: string, category: string) => {
-  const descriptions: {[key: string]: string} = {
-    "Pothole": "A significant road surface depression causing potential vehicle damage and traffic hazards.",
-    "Street Light": "Non-functional street light creating visibility issues and safety concerns in the area.",
-    "Garbage": "Accumulated waste requiring immediate collection and disposal to maintain cleanliness.",
-    "Tree Fallen": "Fallen tree blocking pathway/road, requiring urgent removal for safety.",
-    "Water Leakage": "Water pipe leakage causing water wastage and potential road damage.",
-    "Traffic Signal": "Malfunctioning traffic signal creating traffic management issues.",
-    "Graffiti": "Unauthorized graffiti on public property requiring cleaning.",
-    "Park Maintenance": "Park facilities requiring maintenance and repair for public safety.",
-  };
-  return descriptions[title] || 
-    `Issue related to ${category} requiring immediate attention.`;
-};
-
-// Typing text component
-const TypedText = ({ text, speed = 50, className = "" }: { text: string; speed?: number; className?: string }) => {
-  const [displayedText, setDisplayedText] = useState("");
-  const [isTyping, setIsTyping] = useState(true);
-  const currentIndex = useRef(0);
-
-  useEffect(() => {
-    if (isTyping && currentIndex.current < text.length) {
-      const timer = setTimeout(() => {
-        setDisplayedText(prev => prev + text[currentIndex.current]);
-        currentIndex.current += 1;
-      }, speed);
-      
-      if (currentIndex.current >= text.length) {
-        setIsTyping(false);
-      }
-      
-      return () => clearTimeout(timer);
-    } else if (!isTyping && currentIndex.current === text.length) {
-      // Reset typing after a delay
-      const resetTimer = setTimeout(() => {
-        setDisplayedText("");
-        currentIndex.current = 0;
-        setIsTyping(true);
-      }, 3000);
-      
-      return () => clearTimeout(resetTimer);
-    }
-  }, [displayedText, isTyping, text, speed]);
-
-  return <span className={className}>{displayedText}<span className="animate-pulse">|</span></span>;
-};
-
-export default function UserDashboard() {
-  const [selectedTab, setSelectedTab] = useState<"report" | "vouchers" | "progress">("report");
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    location: "",
-  });
-  const [showCompanies, setShowCompanies] = useState(false);
-  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userPoints, setUserPoints] = useState(0);
-  const [isLoadingPoints, setIsLoadingPoints] = useState(true);
-  const [myIssues, setMyIssues] = useState<any[]>([]);
-  const [isLoadingIssues, setIsLoadingIssues] = useState(true);
-
-  // Update the type to match what we defined above
-  const [topReporters, setTopReporters] = useState<Reporter[]>([
-    { id: "1", name: "John Doe", points: 500, issues: 15 },
-    { id: "2", name: "Jane Smith", points: 450, issues: 12 },
-    { id: "3", name: "Mike Johnson", points: 400, issues: 10 },
-  ]);
+export default function AdminDashboard() {
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [displayedIssues, setDisplayedIssues] = useState<Issue[]>([]);
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [awardValue, setAwardValue] = useState(10);
 
   const { user, isAuthenticated } = useAuth();
 
-  const companies = [
-    "Metro Supermarket",
-    "City Hospital",
-    "Urban Transport",
-    "Green Energy Co.",
-    "Local Pharmacy",
-  ];
-
-  const [vouchers, setVouchers] = useState([
-    { id: 1, title: "10% Hospital Discount", points: 100, redeemed: false },
-    { id: 2, title: "Shopping Gift Card $50", points: 200, redeemed: false },
-    { id: 3, title: "Utility Bill Discount", points: 150, redeemed: true },
-  ]);
-
+  // Fetch all issues from Supabase DB
   useEffect(() => {
-    // Fetch user points if authenticated
-    const fetchUserData = async () => {
-      if (!isAuthenticated || !user) return;
-      
-      setIsLoadingPoints(true);
-      
-      try {
-        // Get user profile and points
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('points, username')
-          .eq('id', user.id)
-          .single();
-          
-        if (profileError) {
-          console.error("Error fetching profile:", profileError);
-        } else if (profileData) {
-          setUserPoints(profileData.points || 0);
-        }
-        
-        // Fetch user's submitted issues
-        const { data: issuesData, error: issuesError } = await supabase
-          .from('issues')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-          
-        if (issuesError) {
-          console.error("Error fetching user issues:", issuesError);
-        } else if (issuesData) {
-          setMyIssues(issuesData.map(issue => ({
-            ...issue,
-            date: new Date(issue.created_at || Date.now()).toLocaleDateString(),
-          })));
-        }
-        
-        // Fetch top reporters
-        const { data: topData, error: topError } = await supabase
-          .from('profiles')
-          .select('id, username, points')
-          .order('points', { ascending: false })
-          .limit(5);
-          
-        if (topError) {
-          console.error("Error fetching top reporters:", topError);
-        } else if (topData) {
-          // For each user, count their issues
-          const topWithIssues = await Promise.all(topData.map(async (reporter) => {
-            const { count, error } = await supabase
-              .from('issues')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', reporter.id);
-              
-            return {
-              id: reporter.id,  // This is now a string (UUID)
-              name: reporter.username || "Anonymous",
-              points: reporter.points || 0,
-              issues: count || 0
-            };
-          }));
-          
-          // Now topWithIssues has the correct type (Reporter[])
-          setTopReporters(topWithIssues);
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        toast.error("Failed to load user data");
-      } finally {
-        setIsLoadingPoints(false);
-        setIsLoadingIssues(false);
-      }
-    };
+    const fetchIssues = async () => {
+      setLoading(true);
 
-    fetchUserData();
-    
-    // Set up a subscription for real-time updates to the user's points
-    const pointsSubscription = supabase
-      .channel('profiles-changes')
-      .on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user?.id}` }, 
-        (payload) => {
-          console.log('Profile change received:', payload);
-          // Update points if they changed
-          if (payload.new && 'points' in payload.new) {
-            setUserPoints(payload.new.points || 0);
-            toast.success(`Your points have been updated: ${payload.new.points}`);
-          }
-        }
-      )
-      .subscribe();
-      
-    // Set up a subscription for new issues
-    const issuesSubscription = supabase
-      .channel('user-issues-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'issues', filter: `user_id=eq.${user?.id}` }, 
-        (payload) => {
-          console.log('Issue change received:', payload);
-          // Refresh user issues when there's a change
-          if (user) {
-            supabase
-              .from('issues')
-              .select('*')
-              .eq('user_id', user.id)
-              .order('created_at', { ascending: false })
-              .then(({ data, error }) => {
-                if (!error && data) {
-                  setMyIssues(data.map(issue => ({
-                    ...issue,
-                    date: new Date(issue.created_at || Date.now()).toLocaleDateString(),
-                  })));
-                }
-              });
-          }
-        }
-      )
-      .subscribe();
-      
-    return () => {
-      pointsSubscription.unsubscribe();
-      issuesSubscription.unsubscribe();
-    };
-  }, [isAuthenticated, user]);
-
-  const handleSampleProblemSelect = (problem: typeof sampleProblems[0]) => {
-    setFormData({
-      title: problem.title,
-      description: generateDescription(problem.title, problem.category),
-      location: formData.location,
-    });
-    toast.success("Problem template loaded");
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedImage(file);
-      setImagePreview(URL.createObjectURL(file));
-    }
-  };
-
-  const getCurrentLocation = () => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setFormData(prev => ({
-            ...prev,
-            location: `${latitude},${longitude}`
-          }));
-          toast.success("Current location detected");
-        },
-        (error) => {
-          toast.error("Error getting location: " + error.message);
-        }
-      );
-    } else {
-      toast.error("Geolocation is not supported by your browser");
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!isAuthenticated || !user) {
-      toast.error("You must be logged in to report a problem");
-      return;
-    }
-    
-    if (!formData.title || !formData.description || !formData.location) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    setIsSubmitting(true);
-    
-    try {
-      // First, if there's an image, upload it to Supabase storage
-      let imageUrl = null;
-      
-      if (selectedImage) {
-        const fileExt = selectedImage.name.split('.').pop();
-        const fileName = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('issue-images')
-          .upload(fileName, selectedImage);
-          
-        if (uploadError) {
-          console.error("Error uploading image:", uploadError);
-          toast.error("Failed to upload image");
-        } else if (uploadData) {
-          // Get the public URL for the uploaded image
-          const { data: { publicUrl } } = supabase.storage
-            .from('issue-images')
-            .getPublicUrl(uploadData.path);
-            
-          imageUrl = publicUrl;
-        }
-      }
-      
-      // Now create the issue record
       const { data, error } = await supabase
         .from('issues')
-        .insert([
-          {
-            title: formData.title,
-            description: formData.description,
-            location: formData.location,
-            user_id: user.id,
-            image_url: imageUrl,
-            status: 'pending',
-          }
-        ])
-        .select();
-        
+        .select(`
+          *,
+          profiles:user_id (
+            username,
+            id
+          )
+        `)
+        .order('created_at', { ascending: false });
+
       if (error) {
-        console.error("Error creating issue:", error);
-        toast.error("Failed to submit issue");
-        return;
-      }
-      
-      if (data) {
-        // Update globalIssues for backward compatibility
-        const newIssue = {
-          id: data[0].id,
-          title: data[0].title,
-          description: data[0].description,
-          location: data[0].location,
-          status: 'pending',
-          reporter: user.email || "Current User",
-          user_id: user.id,
-          date: new Date().toLocaleDateString(),
-          image: imageUrl
-        };
+        console.error("Error fetching issues:", error);
+        setError(error.message);
+        toast.error("Failed to load issues");
+      } else if (data) {
+        // Format the issues data for display
+        const formattedIssues = data.map(issue => {
+          const profile = issue.profiles as { username?: string; id?: string } | null;
+          return {
+            ...issue,
+            date: new Date(issue.created_at || Date.now()).toLocaleDateString(),
+            reporter: profile?.username || "Anonymous",
+            reporter_id: profile?.id || "",
+            profiles: profile
+          };
+        });
         
-        if (typeof window !== 'undefined') {
-          window.globalIssues = [...(window.globalIssues || []), newIssue];
+        setIssues(formattedIssues);
+      }
+
+      setLoading(false);
+    };
+
+    const fetchUsers = async () => {
+      // Fetch users via profiles table
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('points', { ascending: false });
+
+      if (error) {
+        console.error("Error fetching users:", error);
+      } else if (data) {
+        setUsers(data);
+      }
+    };
+
+    fetchIssues();
+    fetchUsers();
+  }, []);
+
+  // Filter and search issues
+  useEffect(() => {
+    let filtered = [...issues];
+
+    // Filter by status
+    if (filterStatus !== "all") {
+      filtered = filtered.filter((issue) => issue.status === filterStatus);
+    }
+
+    // Search by title, description, or location
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (issue) =>
+          issue.title.toLowerCase().includes(query) ||
+          issue.description.toLowerCase().includes(query) ||
+          issue.location.toLowerCase().includes(query)
+      );
+    }
+
+    setDisplayedIssues(filtered);
+  }, [issues, searchQuery, filterStatus]);
+
+  const updateIssueStatus = async (issueId: number, newStatus: string) => {
+    const { error } = await supabase
+      .from('issues')
+      .update({ status: newStatus })
+      .eq('id', issueId);
+
+    if (error) {
+      console.error("Error updating issue status:", error);
+      toast.error("Failed to update issue status");
+      return false;
+    }
+
+    // Update the local state
+    setIssues(
+      issues.map((issue) =>
+        issue.id === issueId ? { ...issue, status: newStatus } : issue
+      )
+    );
+
+    // If new status is 'completed', award points to the reporter
+    if (newStatus === 'completed') {
+      // Find the issue to get the reporter_id
+      const issue = issues.find(i => i.id === issueId);
+      if (issue && issue.user_id) {
+        // Use user_id from the issue instead of reporter_id
+        const pointsResult = await awardPoints(issue.user_id, awardValue);
+        if (pointsResult) {
+          toast.success(`Awarded ${awardValue} points to reporter`);
         }
-        
-        toast.success("Problem reported successfully!");
-        
-        // Reset form
-        setFormData({ title: "", description: "", location: "" });
-        setSelectedImage(null);
-        setImagePreview(null);
       }
-    } catch (error) {
-      console.error("Error in submit:", error);
-      toast.error("An error occurred while submitting your report");
-    } finally {
-      setIsSubmitting(false);
     }
+
+    toast.success(`Issue status updated to ${newStatus}`);
+    return true;
   };
 
-  const handleVoucherRedeem = (voucher: any) => {
-    setSelectedVoucher(voucher);
-    setShowCompanies(true);
-  };
-
-  const handleCompanySelect = async (company: string) => {
-    if (!user || !selectedVoucher) {
-      toast.error("Something went wrong");
-      setShowCompanies(false);
-      return;
-    }
-    
+  const awardPoints = async (userId: string, points: number) => {
     try {
-      // Check if user has enough points
-      if (userPoints < selectedVoucher.points) {
-        toast.error("You don't have enough points for this voucher");
-        setShowCompanies(false);
-        return;
-      }
-      
-      // Create a record of the voucher redemption
-      const { error } = await supabase.from('user_vouchers').insert({
-        user_id: user.id,
-        voucher_id: selectedVoucher.id,
-        redeemed_at_company: company
+      // Call the Supabase RPC function to award points
+      const { error } = await supabase.rpc('award_points', {
+        user_id: userId,
+        points_to_award: points
       });
       
       if (error) {
-        console.error("Error redeeming voucher:", error);
-        toast.error("Failed to redeem voucher");
-        setShowCompanies(false);
-        return;
+        console.error("Error awarding points:", error);
+        toast.error("Failed to award points");
+        return false;
       }
       
-      // Deduct the points
-      const { error: pointsError } = await supabase.rpc('award_points', {
-        user_id: user.id,
-        points_to_award: -selectedVoucher.points
-      });
-      
-      if (pointsError) {
-        console.error("Error deducting points:", pointsError);
-        toast.error("Failed to deduct points");
-      } else {
-        // Update the vouchers list
-        setVouchers(vouchers.map(v => 
-          v.id === selectedVoucher.id ? { ...v, redeemed: true } : v
-        ));
-        
-        toast.success(`Voucher redeemed at ${company}!`);
-      }
+      return true;
     } catch (error) {
-      console.error("Error in voucher redemption:", error);
-      toast.error("An error occurred during redemption");
-    } finally {
-      setShowCompanies(false);
-      setSelectedVoucher(null);
+      console.error("Exception in award points:", error);
+      toast.error("An error occurred while awarding points");
+      return false;
     }
   };
+
+  const handleIssueClick = (issue: Issue) => {
+    setSelectedIssue(issue);
+    setIsDetailsOpen(true);
+  };
+
+  const totalIssues = issues.length;
+  const pendingIssues = issues.filter((i) => i.status === "pending").length;
+  const inProgressIssues = issues.filter((i) => i.status === "in_progress").length;
+  const completedIssues = issues.filter((i) => i.status === "completed").length;
+
+  // Chart data for the statistics tab
+  const chartData = [
+    { name: "Pending", value: pendingIssues },
+    { name: "In Progress", value: inProgressIssues },
+    { name: "Completed", value: completedIssues },
+  ];
 
   return (
-    <div className="min-h-screen p-6 space-y-8">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-0" />
-      
-      <div className="relative z-10">
-        {isAuthenticated && (
-          <div className="mb-4 glass p-3 rounded-lg flex justify-between items-center">
+    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      <h1 className="text-2xl font-bold tracking-tight mb-6">Admin Dashboard</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
             <div>
-              <span className="text-white/70">Hello, {user?.email}</span>
+              <p className="text-sm font-medium text-muted-foreground">
+                Total Issues
+              </p>
+              <h3 className="text-2xl font-bold">{totalIssues}</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <Award className="text-yellow-400" />
-              <span className="text-yellow-400 font-bold">
-                {isLoadingPoints ? "Loading..." : `${userPoints} Points`}
-              </span>
+            <div className="p-2 bg-primary/10 rounded-full">
+              <Trophy className="h-5 w-5 text-primary" />
             </div>
           </div>
-        )}
-      
-        <div className="flex flex-wrap gap-4 mb-8">
-          <Button
-            onClick={() => setSelectedTab("report")}
-            variant="glass"
-            className={selectedTab === "report" ? "bg-white/20 shadow-lg shadow-white/10" : ""}
-          >
-            <MapPin className="mr-2" />
-            Report Problem
-          </Button>
-          <Button
-            onClick={() => setSelectedTab("vouchers")}
-            variant="glass"
-            className={selectedTab === "vouchers" ? "bg-white/20 shadow-lg shadow-white/10" : ""}
-          >
-            <Gift className="mr-2" />
-            Vouchers
-          </Button>
-          <Button
-            onClick={() => setSelectedTab("progress")}
-            variant="glass"
-            className={selectedTab === "progress" ? "bg-white/20 shadow-lg shadow-white/10" : ""}
-          >
-            <TrendingUp className="mr-2" />
-            Track Progress
-          </Button>
-        </div>
+        </Card>
 
-        {selectedTab === "report" && (
-          <Card className="p-6 neo-blur animate-fadeIn">
-            <h2 className="text-2xl font-semibold mb-2 text-yellow-400 text-glow">
-              <TypedText text="Report a Problem" speed={70} className="font-bold" />
-            </h2>
-            <p className="text-white/70 mb-4">Select from common issues or create your own report</p>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
-              {sampleProblems.map((problem) => (
-                <Button
-                  key={problem.id}
-                  onClick={() => handleSampleProblemSelect(problem)}
-                  variant="glass"
-                >
-                  {problem.title}
-                </Button>
-              ))}
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Pending
+              </p>
+              <h3 className="text-2xl font-bold">{pendingIssues}</h3>
+            </div>
+            <div className="p-2 bg-yellow-500/10 rounded-full">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Completed
+              </p>
+              <h3 className="text-2xl font-bold">{completedIssues}</h3>
+            </div>
+            <div className="p-2 bg-green-500/10 rounded-full">
+              <Trophy className="h-5 w-5 text-green-500" />
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="issues" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="issues">Issues</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="statistics">Statistics</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="issues">
+          <Card className="p-4">
+            <div className="flex flex-col md:flex-row gap-4 items-center mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search issues..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Select
+                value={filterStatus}
+                onValueChange={setFilterStatus}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Problem Title"
-                className="w-full p-2 glass"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              />
-              <textarea
-                placeholder="Problem Description"
-                className="w-full p-2 glass h-32"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              />
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Location (e.g., '123 Main St' or coordinates)"
-                  className="flex-1 p-2 glass"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                />
-                <Button 
-                  variant="glass"
-                  className="button-shine"
-                  onClick={getCurrentLocation}
-                >
-                  <MapPin className="mr-2" />
-                  Get Location
-                </Button>
+            {loading ? (
+              <div className="py-8 text-center">Loading issues...</div>
+            ) : error ? (
+              <div className="py-8 text-center text-red-500">{error}</div>
+            ) : displayedIssues.length === 0 ? (
+              <div className="py-8 text-center">No issues found</div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Reporter</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayedIssues.map((issue) => (
+                      <TableRow
+                        key={issue.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleIssueClick(issue)}
+                      >
+                        <TableCell className="font-medium">
+                          #{issue.id}
+                        </TableCell>
+                        <TableCell>{issue.title}</TableCell>
+                        <TableCell>{issue.location}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              issue.status === "completed"
+                                ? "outline"
+                                : issue.status === "in_progress"
+                                ? "secondary"
+                                : "default"
+                            }
+                            className={
+                              issue.status === "completed"
+                                ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                : issue.status === "in_progress"
+                                ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                                : ""
+                            }
+                          >
+                            {issue.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{issue.reporter}</TableCell>
+                        <TableCell>{issue.date}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateIssueStatus(issue.id, "pending");
+                                }}
+                              >
+                                Mark as Pending
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateIssueStatus(issue.id, "in_progress");
+                                }}
+                              >
+                                Mark as In Progress
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateIssueStatus(issue.id, "completed");
+                                }}
+                              >
+                                Mark as Completed
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-              <div className="space-y-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  id="image-upload"
-                  onChange={handleImageChange}
-                />
-                <label htmlFor="image-upload">
-                  <Button variant="glass" className="button-shine" asChild>
-                    <span>
-                      <Upload className="mr-2" />
-                      Upload Media
-                    </span>
-                  </Button>
-                </label>
-                {imagePreview && (
-                  <div className="relative w-full max-w-md">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="rounded-lg w-full h-48 object-cover"
-                    />
-                    <Button
-                      variant="glass"
-                      className="absolute top-2 right-2"
-                      onClick={() => {
-                        setSelectedImage(null);
-                        setImagePreview(null);
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <Button 
-                variant="glass" 
-                className="w-full button-shine" 
-                onClick={handleSubmit}
-                disabled={isSubmitting || !isAuthenticated}
-              >
-                {isSubmitting ? "Submitting..." : "Submit Report"}
-              </Button>
-              
-              {!isAuthenticated && (
-                <p className="text-yellow-400 text-center mt-2">
-                  You must be logged in to submit a report
-                </p>
-              )}
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="users">
+          <Card className="p-4">
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Issues Reported</TableHead>
+                    <TableHead>Points</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium flex items-center">
+                        <User className="h-4 w-4 mr-2" />
+                        {user.username || "Anonymous"}
+                      </TableCell>
+                      <TableCell>
+                        {
+                          issues.filter(
+                            (issue) => issue.user_id === user.id
+                          ).length
+                        }
+                      </TableCell>
+                      <TableCell>{user.points || 0} pts</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // Award 10 points to the user
+                            awardPoints(user.id, 10);
+                          }}
+                        >
+                          Award Points
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </Card>
-        )}
+        </TabsContent>
 
-        {selectedTab === "vouchers" && (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
-            <div className="col-span-full mb-2">
-              <h2 className="text-2xl font-semibold text-yellow-400 text-glow">
-                <TypedText text="Available Vouchers" speed={70} className="font-bold" />
-              </h2>
-              <p className="text-white/70">Redeem your points for exclusive benefits</p>
-              {isAuthenticated && (
-                <p className="text-yellow-400 mt-2">You have {userPoints} points available</p>
-              )}
+        <TabsContent value="statistics">
+          <Card className="p-4">
+            <h3 className="text-lg font-semibold mb-4">Issues by Status</h3>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <ChartTooltip 
+                    content={
+                      <ChartTooltipContent 
+                        formatter={(value) => [`${value} issues`, 'Count']}
+                      />
+                    } 
+                  />
+                  <Bar 
+                    dataKey="value" 
+                    fill="var(--primary)" 
+                    name="Issues" 
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            
-            {vouchers.map((voucher) => (
-              <Card key={voucher.id} className="p-6 neo-blur hover:scale-105 transition-duration-300">
-                <Gift className="w-12 h-12 mb-4 text-yellow-400" />
-                <h3 className="text-xl font-semibold mb-2 text-yellow-400">{voucher.title}</h3>
-                <p className="text-white/70">{voucher.points} Points</p>
-                <Button 
-                  variant="glass"
-                  className="mt-4 w-full button-shine"
-                  disabled={voucher.redeemed || !isAuthenticated || userPoints < voucher.points}
-                  onClick={() => handleVoucherRedeem(voucher)}
-                >
-                  {!isAuthenticated 
-                    ? "Login to Redeem" 
-                    : voucher.redeemed 
-                      ? "Redeemed" 
-                      : userPoints < voucher.points
-                        ? "Not Enough Points"
-                        : "Redeem Now"}
-                </Button>
-              </Card>
-            ))}
-          </div>
-        )}
+          </Card>
+        </TabsContent>
+      </Tabs>
 
-        {selectedTab === "progress" && (
-          <div className="space-y-6 animate-fadeIn">
-            <Card className="p-6 neo-blur">
-              <h2 className="text-2xl font-semibold mb-4 text-yellow-400 text-glow">
-                <TypedText text="My Reports" speed={70} className="font-bold" />
-              </h2>
-              
-              {isLoadingIssues ? (
-                <p className="text-white/70">Loading your reports...</p>
-              ) : myIssues.length > 0 ? (
-                <div className="space-y-4">
-                  {myIssues.map((issue) => (
-                    <div key={issue.id} className="p-4 glass rounded-lg space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-yellow-400">{issue.title}</h3>
-                        <div className={`px-3 py-1 rounded-full text-xs ${
-                          issue.status === 'completed' ? 'bg-green-400/20 text-green-400' :
-                          issue.status === 'in_progress' ? 'bg-yellow-400/20 text-yellow-400' :
-                          'bg-blue-400/20 text-blue-400'
-                        }`}>
-                          {issue.status}
-                        </div>
-                      </div>
-                      <p className="text-white/70">{issue.description}</p>
-                      <div className="flex items-center gap-2 text-sm text-white/50">
-                        <Clock size={16} />
-                        <span>{issue.date}</span>
-                        <span>•</span>
-                        <MapPin size={16} />
-                        <span>{issue.location}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-white/70">You haven't reported any issues yet.</p>
-              )}
-            </Card>
-            
-            <Card className="p-6 neo-blur">
-              <h2 className="text-2xl font-semibold mb-4 text-yellow-400 text-glow">
-                <TypedText text="Top Contributors" speed={70} className="font-bold" />
-              </h2>
-              <p className="text-white/70 mb-4">See how you rank among the city's problem solvers</p>
-              
-              <div className="space-y-4">
-                {topReporters.map((reporter) => (
-                  <div
-                    key={reporter.id}
-                    className="flex items-center justify-between p-4 glass rounded-lg"
-                  >
-                    <div>
-                      <h3 className="font-semibold text-yellow-400">{reporter.name}</h3>
-                      <p className="text-white/70">{reporter.issues} Issues Reported</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-yellow-400 font-bold">{reporter.points} Points</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-        )}
-
-        <Dialog open={showCompanies} onOpenChange={setShowCompanies}>
-          <DialogContent className="glass">
+      {selectedIssue && (
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Select Redemption Location</DialogTitle>
+              <DialogTitle>{selectedIssue.title}</DialogTitle>
+              <DialogDescription>
+                Reported by {selectedIssue.reporter} on{" "}
+                {selectedIssue.date}
+              </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4">
-              {companies.map((company) => (
-                <Button
-                  key={company}
-                  variant="glass"
-                  className="button-shine"
-                  onClick={() => handleCompanySelect(company)}
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium mb-1">Description</h4>
+                <p className="text-sm text-muted-foreground">
+                  {selectedIssue.description}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-1">Location</h4>
+                <p className="text-sm text-muted-foreground">
+                  {selectedIssue.location}
+                </p>
+              </div>
+              {selectedIssue.image_url && (
+                <div>
+                  <h4 className="text-sm font-medium mb-1">Image</h4>
+                  <img
+                    src={selectedIssue.image_url}
+                    alt="Issue"
+                    className="rounded-md max-h-[300px] object-contain"
+                  />
+                </div>
+              )}
+              <div>
+                <h4 className="text-sm font-medium mb-1">Status</h4>
+                <Badge
+                  variant={
+                    selectedIssue.status === "completed"
+                      ? "outline"
+                      : selectedIssue.status === "in_progress"
+                      ? "secondary"
+                      : "default"
+                  }
+                  className={
+                    selectedIssue.status === "completed"
+                      ? "bg-green-100 text-green-800"
+                      : selectedIssue.status === "in_progress"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : ""
+                  }
                 >
-                  {company}
-                </Button>
-              ))}
+                  {selectedIssue.status}
+                </Badge>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-1">
+                  Award points when marking as complete
+                </h4>
+                <Input
+                  type="number"
+                  value={awardValue}
+                  onChange={(e) => setAwardValue(parseInt(e.target.value) || 0)}
+                  className="w-[100px]"
+                  min={0}
+                />
+              </div>
             </div>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsDetailsOpen(false)}
+              >
+                Close
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  className="bg-yellow-500 hover:bg-yellow-600"
+                  onClick={() => {
+                    updateIssueStatus(selectedIssue.id, "in_progress");
+                    setIsDetailsOpen(false);
+                  }}
+                >
+                  Mark as In Progress
+                </Button>
+                <Button
+                  variant="default"
+                  className="bg-green-500 hover:bg-green-600"
+                  onClick={() => {
+                    updateIssueStatus(selectedIssue.id, "completed");
+                    setIsDetailsOpen(false);
+                  }}
+                >
+                  Mark as Completed
+                </Button>
+              </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      )}
     </div>
   );
 }

@@ -28,20 +28,27 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Chart,
   ChartContainer,
-  ChartTick,
-  ChartAxis,
-  ChartBar,
-  ChartGroup,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from "recharts";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Trophy, MoreVertical, User, Search, Check, X } from "lucide-react";
+import { Trophy, MoreVertical, User, Search } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -58,10 +65,10 @@ interface Issue {
   date: string;
   reporter: string;
   reporter_id: string;
-  image_url?: string;
+  image_url?: string | null;
   user_id: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
   profiles?: {
     username?: string;
     id?: string;
@@ -110,7 +117,8 @@ export default function AdminDashboard() {
             ...issue,
             date: new Date(issue.created_at || Date.now()).toLocaleDateString(),
             reporter: profile?.username || "Anonymous",
-            reporter_id: profile?.id
+            reporter_id: profile?.id || "",
+            profiles: profile
           };
         });
         
@@ -228,6 +236,13 @@ export default function AdminDashboard() {
   const pendingIssues = issues.filter((i) => i.status === "pending").length;
   const inProgressIssues = issues.filter((i) => i.status === "in_progress").length;
   const completedIssues = issues.filter((i) => i.status === "completed").length;
+
+  // Chart data for the statistics tab
+  const chartData = [
+    { name: "Pending", value: pendingIssues },
+    { name: "In Progress", value: inProgressIssues },
+    { name: "Completed", value: completedIssues },
+  ];
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
@@ -348,10 +363,17 @@ export default function AdminDashboard() {
                           <Badge
                             variant={
                               issue.status === "completed"
-                                ? "success"
+                                ? "outline"
                                 : issue.status === "in_progress"
-                                ? "warning"
+                                ? "secondary"
                                 : "default"
+                            }
+                            className={
+                              issue.status === "completed"
+                                ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                : issue.status === "in_progress"
+                                ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                                : ""
                             }
                           >
                             {issue.status}
@@ -458,19 +480,25 @@ export default function AdminDashboard() {
           <Card className="p-4">
             <h3 className="text-lg font-semibold mb-4">Issues by Status</h3>
             <div className="h-[300px]">
-              <ChartContainer
-                yAxis={
-                  <ChartAxis>
-                    {(value) => <ChartTick>{value}</ChartTick>}
-                  </ChartAxis>
-                }
-              >
-                <ChartGroup>
-                  <ChartBar value={pendingIssues} label="Pending" />
-                  <ChartBar value={inProgressIssues} label="In Progress" />
-                  <ChartBar value={completedIssues} label="Completed" />
-                </ChartGroup>
-              </ChartContainer>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <ChartTooltip 
+                    content={
+                      <ChartTooltipContent 
+                        formatter={(value) => [`${value} issues`, 'Count']}
+                      />
+                    } 
+                  />
+                  <Bar 
+                    dataKey="value" 
+                    fill="var(--primary)" 
+                    name="Issues" 
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </Card>
         </TabsContent>
@@ -514,10 +542,17 @@ export default function AdminDashboard() {
                 <Badge
                   variant={
                     selectedIssue.status === "completed"
-                      ? "success"
+                      ? "outline"
                       : selectedIssue.status === "in_progress"
-                      ? "warning"
+                      ? "secondary"
                       : "default"
+                  }
+                  className={
+                    selectedIssue.status === "completed"
+                      ? "bg-green-100 text-green-800"
+                      : selectedIssue.status === "in_progress"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : ""
                   }
                 >
                   {selectedIssue.status}
