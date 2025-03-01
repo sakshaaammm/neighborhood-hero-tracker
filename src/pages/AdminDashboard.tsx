@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,21 +27,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from "@/components/ui/chart";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-} from "recharts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,15 +79,10 @@ export default function AdminDashboard() {
     const fetchIssues = async () => {
       setLoading(true);
 
+      // Modified to avoid join query that was causing issues
       const { data, error } = await supabase
         .from('issues')
-        .select(`
-          *,
-          profiles:user_id (
-            username,
-            id
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -109,17 +90,28 @@ export default function AdminDashboard() {
         setError(error.message);
         toast.error("Failed to load issues");
       } else if (data) {
-        // Format the issues data for display
+        // Format the issues data for display, without trying to access profile data
         const formattedIssues = data.map(issue => {
-          const profile = issue.profiles as { username?: string; id?: string } | null;
           return {
             ...issue,
             date: new Date(issue.created_at || Date.now()).toLocaleDateString(),
-            reporter: profile?.username || "Anonymous",
-            reporter_id: profile?.id || "",
-            profiles: profile
+            reporter: "User", // Default placeholder
+            reporter_id: issue.user_id,
           };
         });
+        
+        // Fetch usernames separately
+        for (const issue of formattedIssues) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', issue.user_id)
+            .single();
+            
+          if (profileData) {
+            issue.reporter = profileData.username || "Anonymous";
+          }
+        }
         
         setIssues(formattedIssues);
       }
@@ -236,13 +228,6 @@ export default function AdminDashboard() {
   const inProgressIssues = issues.filter((i) => i.status === "in_progress").length;
   const completedIssues = issues.filter((i) => i.status === "completed").length;
 
-  // Chart data for the statistics tab
-  const chartData = [
-    { name: "Pending", value: pendingIssues },
-    { name: "In Progress", value: inProgressIssues },
-    { name: "Completed", value: completedIssues },
-  ];
-
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold tracking-tight mb-6">Admin Dashboard</h1>
@@ -295,7 +280,6 @@ export default function AdminDashboard() {
         <TabsList className="mb-4">
           <TabsTrigger value="issues">Issues</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="statistics">Statistics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="issues">
@@ -366,13 +350,6 @@ export default function AdminDashboard() {
                                 : issue.status === "in_progress"
                                 ? "secondary"
                                 : "default"
-                            }
-                            className={
-                              issue.status === "completed"
-                                ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                : issue.status === "in_progress"
-                                ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                                : ""
                             }
                           >
                             {issue.status}
@@ -474,33 +451,6 @@ export default function AdminDashboard() {
             </div>
           </Card>
         </TabsContent>
-
-        <TabsContent value="statistics">
-          <Card className="p-4">
-            <h3 className="text-lg font-semibold mb-4">Issues by Status</h3>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <ChartTooltip 
-                    content={
-                      <ChartTooltipContent 
-                        formatter={(value) => [`${value} issues`, 'Count']}
-                      />
-                    } 
-                  />
-                  <Bar 
-                    dataKey="value" 
-                    fill="var(--primary)" 
-                    name="Issues" 
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {selectedIssue && (
@@ -546,13 +496,6 @@ export default function AdminDashboard() {
                       ? "secondary"
                       : "default"
                   }
-                  className={
-                    selectedIssue.status === "completed"
-                      ? "bg-green-100 text-green-800"
-                      : selectedIssue.status === "in_progress"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : ""
-                  }
                 >
                   {selectedIssue.status}
                 </Badge>
@@ -580,7 +523,6 @@ export default function AdminDashboard() {
               <div className="flex gap-2">
                 <Button
                   variant="default"
-                  className="bg-yellow-500 hover:bg-yellow-600"
                   onClick={() => {
                     updateIssueStatus(selectedIssue.id, "in_progress");
                     setIsDetailsOpen(false);
@@ -590,7 +532,6 @@ export default function AdminDashboard() {
                 </Button>
                 <Button
                   variant="default"
-                  className="bg-green-500 hover:bg-green-600"
                   onClick={() => {
                     updateIssueStatus(selectedIssue.id, "completed");
                     setIsDetailsOpen(false);
