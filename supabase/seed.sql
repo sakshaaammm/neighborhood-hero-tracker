@@ -1,4 +1,5 @@
 
+
 -- Create storage bucket for issue images if it doesn't exist
 INSERT INTO storage.buckets (id, name, public) VALUES ('issue-images', 'issue-images', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
@@ -17,3 +18,17 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 0;
 -- Create indexes to optimize joins between issues and profiles
 CREATE INDEX IF NOT EXISTS idx_issues_user_id ON public.issues (user_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_id ON public.profiles (id);
+
+-- Create function to award points to users
+CREATE OR REPLACE FUNCTION award_points(user_id UUID, points_to_award INTEGER)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE profiles
+  SET points = COALESCE(points, 0) + points_to_award
+  WHERE id = user_id;
+END;
+$$;
+

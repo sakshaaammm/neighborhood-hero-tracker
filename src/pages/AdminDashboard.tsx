@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,12 +84,15 @@ export default function AdminDashboard() {
         toast.error("Failed to load issues");
       } else if (data) {
         // Format the issues data for display
-        const formattedIssues = data.map(issue => ({
-          ...issue,
-          date: new Date(issue.created_at || Date.now()).toLocaleDateString(),
-          reporter: issue.profiles?.username || "Anonymous",
-          reporter_id: issue.profiles?.id
-        }));
+        const formattedIssues = data.map(issue => {
+          const profile = issue.profiles as { username?: string; id?: string } | null;
+          return {
+            ...issue,
+            date: new Date(issue.created_at || Date.now()).toLocaleDateString(),
+            reporter: profile?.username || "Anonymous",
+            reporter_id: profile?.id
+          };
+        });
         
         setIssues(formattedIssues);
       }
