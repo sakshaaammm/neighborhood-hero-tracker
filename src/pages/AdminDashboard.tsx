@@ -179,43 +179,13 @@ export default function AdminDashboard() {
       )
     );
 
-    // If new status is 'completed', award points to the reporter
+    // If new status is 'completed', notify the user
     if (newStatus === 'completed') {
-      // Find the issue to get the reporter_id
-      const issue = issues.find(i => i.id === issueId);
-      if (issue && issue.user_id) {
-        // Use user_id from the issue instead of reporter_id
-        const pointsResult = await awardPoints(issue.user_id, awardValue);
-        if (pointsResult) {
-          toast.success(`Awarded ${awardValue} points to reporter`);
-        }
-      }
+      toast.success(`Issue status updated to ${newStatus}`);
     }
 
     toast.success(`Issue status updated to ${newStatus}`);
     return true;
-  };
-
-  const awardPoints = async (userId: string, points: number) => {
-    try {
-      // Call the Supabase RPC function to award points
-      const { error } = await supabase.rpc('award_points', {
-        user_id: userId,
-        points_to_award: points
-      });
-      
-      if (error) {
-        console.error("Error awarding points:", error);
-        toast.error("Failed to award points");
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("Exception in award points:", error);
-      toast.error("An error occurred while awarding points");
-      return false;
-    }
   };
 
   const handleIssueClick = (issue: Issue) => {
@@ -437,8 +407,8 @@ export default function AdminDashboard() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            // Award 10 points to the user
-                            awardPoints(user.id, 10);
+                            // Notify instead of awarding points
+                            toast.success("Points award feature is currently disabled");
                           }}
                         >
                           Award Points

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,28 +117,6 @@ export default function UserDashboard() {
     } catch (error) {
       console.error("Unexpected error reporting issue:", error);
       toast.error("An unexpected error occurred");
-    }
-  };
-
-  const awardPoints = async (userId: string, points: number) => {
-    try {
-      // Call the Supabase RPC function to award points
-      const { error } = await supabase.rpc('award_points', {
-        user_id: userId,
-        points_to_award: points
-      });
-      
-      if (error) {
-        console.error("Error awarding points:", error);
-        toast.error("Failed to award points");
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("Exception in award points:", error);
-      toast.error("An error occurred while awarding points");
-      return false;
     }
   };
 
